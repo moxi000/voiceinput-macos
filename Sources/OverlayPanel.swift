@@ -31,8 +31,6 @@ class OverlayPanel {
         let hosting = NSHostingView(rootView: content)
         hosting.sizingOptions = []  // We drive panel sizing manually
         hosting.frame = NSRect(x: 0, y: 0, width: currentWidth, height: initialHeight)
-        hosting.wantsLayer = true
-        hosting.layer?.backgroundColor = .clear
 
         let p = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: currentWidth, height: initialHeight),
@@ -182,11 +180,12 @@ struct OverlayContentView: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: cornerRadius)
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+                .opacity(0.55)
+                .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
         )
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 
     // MARK: - Minimal pill (inline mode)
@@ -330,7 +329,7 @@ struct WaveformView: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(0..<levels.count, id: \.self) { i in
-                RoundedRectangle(cornerRadius: 1.5)
+                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
                     .fill(.primary.opacity(0.6))
                     .frame(width: 3, height: barHeight(for: levels[i]))
                     .animation(.easeOut(duration: 0.12), value: levels[i])
