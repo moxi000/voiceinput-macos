@@ -91,10 +91,12 @@ class VolcengineASR: NSObject, URLSessionWebSocketDelegate {
         request.setValue(resourceId, forHTTPHeaderField: "X-Api-Resource-Id")
         request.setValue(UUID().uuidString, forHTTPHeaderField: "X-Api-Connect-Id")
 
+        let delegateQueue = OperationQueue()
+        delegateQueue.maxConcurrentOperationCount = 1
         urlSession = URLSession(
             configuration: .default,
             delegate: self,
-            delegateQueue: OperationQueue()
+            delegateQueue: delegateQueue
         )
         webSocket = urlSession!.webSocketTask(with: request)
         webSocket!.resume()

@@ -8,23 +8,34 @@ class OverlayPanel {
     private var panel: NSPanel?
     private let viewModel = OverlayViewModel()
     private let panelWidth: CGFloat = 500
+    private let minimalPanelWidth: CGFloat = 170
+    private let minimalPanelHeight: CGFloat = 40
+
+    /// When true, shows only the status icon (no text). Used in inline mode.
+    var minimal: Bool = false {
+        didSet { viewModel.minimal = minimal }
+    }
 
     func show() {
         if panel != nil {
+            resizePanelForMode()
             viewModel.isVisible = true
             panel?.orderFront(nil)
             return
         }
 
+        let currentWidth = minimal ? minimalPanelWidth : panelWidth
+        let initialHeight: CGFloat = minimal ? minimalPanelHeight : 60
+
         let content = OverlayContentView(viewModel: viewModel)
         let hosting = NSHostingView(rootView: content)
         hosting.sizingOptions = []  // We drive panel sizing manually
-
-        let initialHeight: CGFloat = 60
-        hosting.frame = NSRect(x: 0, y: 0, width: panelWidth, height: initialHeight)
+        hosting.frame = NSRect(x: 0, y: 0, width: currentWidth, height: initialHeight)
+        hosting.wantsLayer = true
+        hosting.layer?.backgroundColor = .clear
 
         let p = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: panelWidth, height: initialHeight),
+            contentRect: NSRect(x: 0, y: 0, width: currentWidth, height: initialHeight),
             styleMask: [.nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -36,20 +47,22 @@ class OverlayPanel {
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         p.isMovableByWindowBackground = false
         p.hidesOnDeactivate = false
+        p.titlebarAppearsTransparent = true
 
         hosting.autoresizingMask = [.width, .height]
         p.contentView = hosting
 
-        // Position: bottom of panel at screen bottom + 60
+        // Position: bottom-center of screen
         if let screen = NSScreen.main {
             let screenFrame = screen.visibleFrame
-            let x = screenFrame.midX - panelWidth / 2
+            let x = screenFrame.midX - currentWidth / 2
             let y = screenFrame.minY + 60
             p.setFrameOrigin(NSPoint(x: x, y: y))
         }
 
-        // SwiftUI reports measured content height → we resize the panel
+        // SwiftUI reports measured content height → we resize the panel (overlay mode only)
         viewModel.onPanelHeightChange = { [weak self] height in
+            guard self?.minimal != true else { return }
             self?.resizePanel(height: height)
         }
 
@@ -69,6 +82,32 @@ class OverlayPanel {
 
     func setState(_ state: OverlayState) {
         viewModel.state = state
+    }
+
+    func updateAudioLevel(_ level: Float) {
+        var levels = viewModel.audioLevels
+        levels.removeFirst()
+        levels.append(CGFloat(level))
+        viewModel.audioLevels = levels
+    }
+
+    /// Resize panel to match current mode (minimal vs full).
+    private func resizePanelForMode() {
+        guard let p = panel, let screen = NSScreen.main else { return }
+        let screenFrame = screen.visibleFrame
+        if minimal {
+            let x = screenFrame.midX - minimalPanelWidth / 2
+            let y = screenFrame.minY + 60
+            let newFrame = NSRect(x: x, y: y, width: minimalPanelWidth, height: minimalPanelHeight)
+            p.setFrame(newFrame, display: true)
+        } else {
+            // Restore overlay dimensions; SwiftUI preference will refine height later
+            let currentHeight = max(p.frame.height, 60)
+            let x = screenFrame.midX - panelWidth / 2
+            let y = screenFrame.minY + 60
+            let newFrame = NSRect(x: x, y: y, width: panelWidth, height: currentHeight)
+            p.setFrame(newFrame, display: true)
+        }
     }
 
     private func resizePanel(height: CGFloat) {
@@ -97,6 +136,8 @@ class OverlayViewModel: ObservableObject {
     @Published var text: String = ""
     @Published var state: OverlayState = .recording
     @Published var isVisible: Bool = false
+    @Published var minimal: Bool = false
+    @Published var audioLevels: [CGFloat] = Array(repeating: 0, count: 5)
     /// Called from SwiftUI when the desired panel height changes.
     var onPanelHeightChange: ((CGFloat) -> Void)?
 }
@@ -128,7 +169,82 @@ struct OverlayContentView: View {
         maxPanelHeight - chromeHeight
     }
 
+    private var cornerRadius: CGFloat {
+        viewModel.minimal ? 20 : 16
+    }
+
     var body: some View {
+        Group {
+            if viewModel.minimal {
+                minimalPill
+            } else {
+                fullOverlay
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+
+    // MARK: - Minimal pill (inline mode)
+
+    private var minimalPill: some View {
+        HStack(spacing: 8) {
+            minimalStatusIcon
+
+            Text(minimalStatusText)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundColor(.primary.opacity(0.85))
+                .lineLimit(1)
+
+            if case .recording = viewModel.state {
+                WaveformView(levels: viewModel.audioLevels)
+                    .frame(width: 28, height: 16)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    private var minimalStatusIcon: some View {
+        Group {
+            switch viewModel.state {
+            case .recording:
+                Circle()
+                    .fill(.red)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: .red.opacity(0.6), radius: 4)
+            case .transcribing:
+                ProgressView()
+                    .scaleEffect(0.5)
+                    .frame(width: 8, height: 8)
+            case .done:
+                Image(systemName: "checkmark")
+                    .foregroundColor(.green)
+                    .font(.system(size: 10, weight: .bold))
+            case .error:
+                Image(systemName: "xmark")
+                    .foregroundColor(.red)
+                    .font(.system(size: 10, weight: .bold))
+            }
+        }
+    }
+
+    private var minimalStatusText: String {
+        switch viewModel.state {
+        case .recording: return "聆听中"
+        case .transcribing: return "识别中"
+        case .done: return "完成"
+        case .error: return "出错"
+        }
+    }
+
+    // MARK: - Full overlay (paste mode)
+
+    private var fullOverlay: some View {
         HStack(alignment: .top, spacing: 12) {
             statusIcon
                 .frame(width: 24, height: 24)
@@ -166,15 +282,6 @@ struct OverlayContentView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(.white.opacity(0.2), lineWidth: 0.5)
-        )
         .frame(width: 500)
     }
 
@@ -212,5 +319,28 @@ struct OverlayContentView: View {
         case .done: return "✅ 完成"
         case .error(let msg): return "❌ \(msg)"
         }
+    }
+}
+
+// MARK: - Waveform Visualization
+
+struct WaveformView: View {
+    let levels: [CGFloat]
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(0..<levels.count, id: \.self) { i in
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(.primary.opacity(0.6))
+                    .frame(width: 3, height: barHeight(for: levels[i]))
+                    .animation(.easeOut(duration: 0.12), value: levels[i])
+            }
+        }
+    }
+
+    private func barHeight(for level: CGFloat) -> CGFloat {
+        let minH: CGFloat = 3
+        let maxH: CGFloat = 16
+        return minH + (maxH - minH) * level
     }
 }

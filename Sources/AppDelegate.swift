@@ -7,9 +7,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let overlay = OverlayPanel()
     private let recorder = AudioRecorder()
+    private let inlineInjector = InlineTextInjector()
     private var asr: VolcengineASR?
     private var eventTap: CFMachPort?
     private var previousApp: NSRunningApplication?  // app that was focused before recording
+    private var modeMenuItem: NSMenuItem!
+
+    private var isInlineMode: Bool {
+        get { UserDefaults.standard.bool(forKey: "inline_mode") }
+        set { UserDefaults.standard.set(newValue, forKey: "inline_mode") }
+    }
 
     // API credentials (stored in UserDefaults)
     private var appId: String {
@@ -47,6 +54,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(withTitle: "VoiceInput", action: nil, keyEquivalent: "")
+        menu.addItem(NSMenuItem.separator())
+
+        modeMenuItem = NSMenuItem(title: isInlineMode ? "切换到浮窗模式" : "切换到内联模式", action: #selector(toggleMode), keyEquivalent: "")
+        modeMenuItem.target = self
+        menu.addItem(modeMenuItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let configItem = NSMenuItem(title: "设置 API Key...", action: #selector(showApiKeyDialog), keyEquivalent: ",")
@@ -142,6 +155,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.open(DataPaths.historyFile)
     }
 
+    @objc private func toggleMode() {
+        guard !recorder.recording else {
+            print("[AppDelegate] Cannot switch mode while recording")
+            return
+        }
+        isInlineMode.toggle()
+        modeMenuItem.title = isInlineMode ? "切换到浮窗模式" : "切换到内联模式"
+        print("[AppDelegate] Mode: \(isInlineMode ? "inline" : "overlay")")
+    }
+
     @objc private func quit() {
         NSApplication.shared.terminate(nil)
     }
@@ -227,6 +250,55 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         asr = VolcengineASR(appId: appId, token: token, cluster: cluster)
         asr?.hotwords = loadHotwords()
 
+        if isInlineMode {
+            setupInlineModeCallbacks()
+        } else {
+            setupOverlayModeCallbacks()
+        }
+
+        // Start WebSocket connection
+        asr?.startStreaming()
+
+        // Stream audio chunks to ASR in real-time
+        recorder.onAudioChunk = { [weak self] chunk in
+            self?.asr?.sendAudioChunk(chunk)
+        }
+
+        // Feed audio levels to overlay waveform (inline mode only)
+        if isInlineMode {
+            recorder.onAudioLevel = { [weak self] level in
+                DispatchQueue.main.async {
+                    self?.overlay.updateAudioLevel(level)
+                }
+            }
+        } else {
+            recorder.onAudioLevel = nil
+        }
+
+        do {
+            try recorder.start()
+        } catch {
+            print("[AppDelegate] Failed to start recording: \(error)")
+            asr?.cancel()
+            return
+        }
+
+        // Show overlay (minimal in inline mode)
+        overlay.minimal = isInlineMode
+        overlay.setState(.recording)
+        overlay.updateText("")
+        overlay.show()
+
+        if isInlineMode {
+            inlineInjector.reset()
+        }
+
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "mic.badge.plus", accessibilityDescription: "Recording")
+        }
+    }
+
+    private func setupOverlayModeCallbacks() {
         asr?.onPartialResult = { [weak self] text in
             self?.overlay.updateText(text)
         }
@@ -256,30 +328,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.overlay.hide()
             }
         }
+    }
 
-        // Start WebSocket connection
-        asr?.startStreaming()
-
-        // Stream audio chunks to ASR in real-time
-        recorder.onAudioChunk = { [weak self] chunk in
-            self?.asr?.sendAudioChunk(chunk)
+    private func setupInlineModeCallbacks() {
+        asr?.onPartialResult = { [weak self] text in
+            self?.inlineInjector.update(to: text)
         }
 
-        do {
-            try recorder.start()
-        } catch {
-            print("[AppDelegate] Failed to start recording: \(error)")
-            asr?.cancel()
-            return
+        asr?.onFinalResult = { [weak self] text in
+            let processedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
+
+            if !processedText.isEmpty {
+                self?.inlineInjector.finalize(with: processedText)
+                HistoryLogger.log(processedText)
+            } else {
+                // No recognized text — clean up any partial text left in the field
+                self?.inlineInjector.deleteAll()
+            }
+
+            self?.overlay.setState(.done)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self?.overlay.hide()
+            }
         }
 
-        // Show overlay
-        overlay.setState(.recording)
-        overlay.updateText("")
-        overlay.show()
-
-        if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "mic.badge.plus", accessibilityDescription: "Recording")
+        asr?.onError = { [weak self] msg in
+            self?.inlineInjector.deleteAll()
+            self?.overlay.setState(.error(msg))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                self?.overlay.hide()
+            }
         }
     }
 
@@ -287,6 +365,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Stop recording first
         _ = recorder.stop()
         recorder.onAudioChunk = nil
+        recorder.onAudioLevel = nil
 
         // Update menu bar icon
         if let button = statusItem.button {
@@ -295,7 +374,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Signal end of audio to ASR
         overlay.setState(.transcribing)
-        overlay.updateText("正在识别...")
+        if !isInlineMode {
+            overlay.updateText("正在识别...")
+        }
         asr?.endStreaming()
     }
 }

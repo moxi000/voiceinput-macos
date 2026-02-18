@@ -10,6 +10,9 @@ class AudioRecorder {
     /// Callback with PCM data chunks during recording
     var onAudioChunk: ((Data) -> Void)?
 
+    /// Callback with normalized audio level (0.0 – 1.0) for waveform visualization
+    var onAudioLevel: ((Float) -> Void)?
+
     /// Start recording from the default input device
     func start() throws {
         guard !isRecording else { return }
@@ -54,10 +57,24 @@ class AudioRecorder {
             guard status != .error, error == nil else { return }
 
             if let channelData = convertedBuffer.int16ChannelData {
-                let byteCount = Int(convertedBuffer.frameLength) * 2 // 16-bit = 2 bytes
+                let frameCount = Int(convertedBuffer.frameLength)
+                let byteCount = frameCount * 2 // 16-bit = 2 bytes
                 let data = Data(bytes: channelData[0], count: byteCount)
                 self.pcmBuffer.append(data)
                 self.onAudioChunk?(data)
+
+                // Compute normalized RMS level for waveform visualization
+                if frameCount > 0 {
+                    let samples = channelData[0]
+                    var sum: Float = 0
+                    for i in 0..<frameCount {
+                        let s = Float(samples[i])
+                        sum += s * s
+                    }
+                    let rms = sqrtf(sum / Float(frameCount))
+                    let normalized = min(rms / 8000.0, 1.0) // normalize to 0-1
+                    self.onAudioLevel?(normalized)
+                }
             }
         }
 
