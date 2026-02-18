@@ -4,7 +4,7 @@ import Compression
 /// Volcengine (火山引擎) 大模型流式语音识别 client — v3 bigmodel protocol.
 /// Supports real-time streaming: call startStreaming(), feed chunks via sendAudioChunk(), then endStreaming().
 /// Ref: https://www.volcengine.com/docs/6561/1354869
-class VolcengineASR: NSObject, URLSessionWebSocketDelegate {
+class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
     // MARK: - Configuration
     private let appId: String       // X-Api-App-Key
     private let token: String       // X-Api-Access-Key

@@ -15,6 +15,7 @@ let package = Package(
                 .linkedFramework("Cocoa"),
                 .linkedFramework("AVFoundation"),
                 .linkedFramework("Carbon"),
+                .linkedFramework("Network"),
             ]
         )
     ]

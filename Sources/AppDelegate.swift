@@ -8,10 +8,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let overlay = OverlayPanel()
     private let recorder = AudioRecorder()
     private let inlineInjector = InlineTextInjector()
-    private var asr: VolcengineASR?
+    private var asr: ASRService?
     private var eventTap: CFMachPort?
     private var previousApp: NSRunningApplication?  // app that was focused before recording
     private var modeMenuItem: NSMenuItem!
+    private var providerMenuItem: NSMenuItem!
 
     private var isInlineMode: Bool {
         get { UserDefaults.standard.bool(forKey: "inline_mode") }
@@ -32,13 +33,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         set { UserDefaults.standard.set(newValue, forKey: "volcengine_cluster") }
     }
 
+    /// ASR provider: "volcengine" or "local"
+    private var asrProvider: String {
+        get { UserDefaults.standard.string(forKey: "asr_provider") ?? "volcengine" }
+        set { UserDefaults.standard.set(newValue, forKey: "asr_provider") }
+    }
+
+    private var localASRHost: String {
+        get { UserDefaults.standard.string(forKey: "local_asr_host") ?? "127.0.0.1" }
+        set { UserDefaults.standard.set(newValue, forKey: "local_asr_host") }
+    }
+
+    private var localASRPort: UInt16 {
+        get {
+            let val = UserDefaults.standard.integer(forKey: "local_asr_port")
+            return val > 0 ? UInt16(val) : 8000
+        }
+        set { UserDefaults.standard.set(Int(newValue), forKey: "local_asr_port") }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         DataPaths.ensureDataDirectory()
         setupMenuBar()
         setupGlobalHotkey()
         print("[AppDelegate] VoiceInput ready. Press Option+Z to start/stop recording.")
 
-        if appId.isEmpty || token.isEmpty {
+        if asrProvider != "local" && (appId.isEmpty || token.isEmpty) {
             print("[AppDelegate] ⚠️ API credentials not configured. Use the menu bar to set them.")
         }
     }
@@ -60,11 +80,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         modeMenuItem.target = self
         menu.addItem(modeMenuItem)
 
+        providerMenuItem = NSMenuItem(
+            title: asrProvider == "local" ? "切换到云端识别" : "切换到本地识别",
+            action: #selector(toggleProvider), keyEquivalent: "")
+        providerMenuItem.target = self
+        menu.addItem(providerMenuItem)
+
         menu.addItem(NSMenuItem.separator())
 
-        let configItem = NSMenuItem(title: "设置 API Key...", action: #selector(showApiKeyDialog), keyEquivalent: ",")
+        let configItem = NSMenuItem(title: "设置火山引擎 API Key...", action: #selector(showApiKeyDialog), keyEquivalent: ",")
         configItem.target = self
         menu.addItem(configItem)
+
+        let localConfigItem = NSMenuItem(title: "设置本地识别服务...", action: #selector(showLocalASRDialog), keyEquivalent: "")
+        localConfigItem.target = self
+        menu.addItem(localConfigItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -165,6 +195,48 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("[AppDelegate] Mode: \(isInlineMode ? "inline" : "overlay")")
     }
 
+    @objc private func toggleProvider() {
+        guard !recorder.recording else {
+            print("[AppDelegate] Cannot switch provider while recording")
+            return
+        }
+        asrProvider = (asrProvider == "local") ? "volcengine" : "local"
+        providerMenuItem.title = asrProvider == "local" ? "切换到云端识别" : "切换到本地识别"
+        print("[AppDelegate] ASR provider: \(asrProvider)")
+    }
+
+    @objc private func showLocalASRDialog() {
+        let alert = NSAlert()
+        alert.messageText = "本地识别服务设置"
+        alert.informativeText = "请输入本地 ASR 服务的地址和端口"
+
+        let stackView = NSStackView(frame: NSRect(x: 0, y: 0, width: 300, height: 60))
+        stackView.orientation = .vertical
+        stackView.spacing = 8
+
+        let hostField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        hostField.placeholderString = "Host (如: 127.0.0.1)"
+        hostField.stringValue = localASRHost
+        stackView.addArrangedSubview(hostField)
+
+        let portField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        portField.placeholderString = "Port (如: 8000)"
+        portField.stringValue = String(localASRPort)
+        stackView.addArrangedSubview(portField)
+
+        alert.accessoryView = stackView
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "取消")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            localASRHost = hostField.stringValue.isEmpty ? "127.0.0.1" : hostField.stringValue
+            if let port = UInt16(portField.stringValue), port > 0 {
+                localASRPort = port
+            }
+            print("[AppDelegate] Local ASR: \(localASRHost):\(localASRPort)")
+        }
+    }
+
     @objc private func quit() {
         NSApplication.shared.terminate(nil)
     }
@@ -240,15 +312,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         previousApp = NSWorkspace.shared.frontmostApplication
         print("[AppDelegate] Captured target app: \(previousApp?.localizedName ?? "unknown")")
 
-        guard !appId.isEmpty, !token.isEmpty else {
-            print("[AppDelegate] Credentials not set!")
-            showApiKeyDialog()
-            return
+        // Create the appropriate ASR service
+        if asrProvider == "local" {
+            asr = LocalASR(host: localASRHost, port: localASRPort)
+        } else {
+            guard !appId.isEmpty, !token.isEmpty else {
+                print("[AppDelegate] Credentials not set!")
+                showApiKeyDialog()
+                return
+            }
+            let volcASR = VolcengineASR(appId: appId, token: token, cluster: cluster)
+            volcASR.hotwords = loadHotwords()
+            asr = volcASR
         }
-
-        // Create ASR and connect WebSocket BEFORE recording starts
-        asr = VolcengineASR(appId: appId, token: token, cluster: cluster)
-        asr?.hotwords = loadHotwords()
 
         if isInlineMode {
             setupInlineModeCallbacks()
@@ -256,7 +332,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             setupOverlayModeCallbacks()
         }
 
-        // Start WebSocket connection
+        // Start ASR connection
         asr?.startStreaming()
 
         // Stream audio chunks to ASR in real-time
@@ -299,11 +375,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupOverlayModeCallbacks() {
-        asr?.onPartialResult = { [weak self] text in
+        asr?.onPartialResult = { [weak self] (text: String) in
             self?.overlay.updateText(text)
         }
 
-        asr?.onFinalResult = { [weak self] text in
+        asr?.onFinalResult = { [weak self] (text: String) in
             let processedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
 
             if !processedText.isEmpty {
@@ -322,7 +398,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        asr?.onError = { [weak self] msg in
+        asr?.onError = { [weak self] (msg: String) in
             self?.overlay.setState(.error(msg))
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 self?.overlay.hide()
@@ -331,11 +407,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupInlineModeCallbacks() {
-        asr?.onPartialResult = { [weak self] text in
+        asr?.onPartialResult = { [weak self] (text: String) in
             self?.inlineInjector.update(to: text)
         }
 
-        asr?.onFinalResult = { [weak self] text in
+        asr?.onFinalResult = { [weak self] (text: String) in
             let processedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
 
             if !processedText.isEmpty {
@@ -352,7 +428,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        asr?.onError = { [weak self] msg in
+        asr?.onError = { [weak self] (msg: String) in
             self?.inlineInjector.deleteAll()
             self?.overlay.setState(.error(msg))
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
