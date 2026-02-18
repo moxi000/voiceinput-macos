@@ -26,6 +26,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        DataPaths.ensureDataDirectory()
         setupMenuBar()
         setupGlobalHotkey()
         print("[AppDelegate] VoiceInput ready. Press Option+Z to start/stop recording.")
@@ -51,6 +52,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let configItem = NSMenuItem(title: "设置 API Key...", action: #selector(showApiKeyDialog), keyEquivalent: ",")
         configItem.target = self
         menu.addItem(configItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let replacementsItem = NSMenuItem(title: "编辑词汇替换表...", action: #selector(openReplacementsFile), keyEquivalent: "")
+        replacementsItem.target = self
+        menu.addItem(replacementsItem)
+
+        let historyItem = NSMenuItem(title: "查看输入历史...", action: #selector(openHistoryFile), keyEquivalent: "")
+        historyItem.target = self
+        menu.addItem(historyItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -97,6 +108,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func openReplacementsFile() {
+        DataPaths.ensureFileExists(
+            at: DataPaths.replacementsFile,
+            defaultContent: "# 词汇替换表\n# 格式: 原词:替换词 或 原词→替换词\n# 每行一条，#开头为注释\n"
+        )
+        NSWorkspace.shared.open(DataPaths.replacementsFile)
+    }
+
+    @objc private func openHistoryFile() {
+        DataPaths.ensureFileExists(at: DataPaths.historyFile)
+        NSWorkspace.shared.open(DataPaths.historyFile)
+    }
+
     @objc private func quit() {
         NSApplication.shared.terminate(nil)
     }
@@ -105,14 +129,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupGlobalHotkey() {
         // We need accessibility permissions for CGEvent tap
-        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         if !AXIsProcessTrustedWithOptions(options) {
             print("[AppDelegate] ⚠️ Accessibility permission required. Please grant it in System Preferences.")
         }
 
         let mask: CGEventMask = (1 << CGEventType.keyDown.rawValue)
         let callback: CGEventTapCallBack = { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
-            guard type == .keyDown else { return Unmanaged.passRetained(event) }
+            guard type == .keyDown else { return Unmanaged.passUnretained(event) }
 
             let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
             let flags = event.flags
@@ -126,7 +150,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return nil // Consume the event
             }
 
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
 
         let refcon = Unmanaged.passUnretained(self).toOpaque()
@@ -160,6 +184,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startRecording() {
+        // Cancel any previous ASR session to prevent stale results
+        asr?.cancel()
+        asr = nil
+
         // Capture the frontmost app BEFORE anything else
         previousApp = NSWorkspace.shared.frontmostApplication
         print("[AppDelegate] Captured target app: \(previousApp?.localizedName ?? "unknown")")
@@ -178,13 +206,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         asr?.onFinalResult = { [weak self] text in
+            let processedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
+
+            if !processedText.isEmpty {
+                HistoryLogger.log(processedText)
+            }
+
             self?.overlay.setState(.done)
-            self?.overlay.updateText(text)
+            self?.overlay.updateText(processedText.isEmpty ? "无输入" : processedText)
 
             let targetApp = self?.previousApp
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 self?.overlay.hide()
-                TextInjector.paste(text, targetApp: targetApp)
+                if !processedText.isEmpty {
+                    TextInjector.paste(processedText, targetApp: targetApp)
+                }
             }
         }
 

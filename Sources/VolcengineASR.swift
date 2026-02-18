@@ -158,7 +158,7 @@ class VolcengineASR: NSObject, URLSessionWebSocketDelegate {
         print("[VolcASR] WebSocket closed: code=\(closeCode.rawValue), reason=\(reasonStr)")
 
         // bigmodel_async closes normally after last definite result
-        if closeCode == .normalClosure && !didEmitFinal && !lastReceivedText.isEmpty {
+        if closeCode == .normalClosure && !didEmitFinal {
             didEmitFinal = true
             let text = lastReceivedText
             print("[VolcASR] ✅ Final (on close): \"\(text)\"")
