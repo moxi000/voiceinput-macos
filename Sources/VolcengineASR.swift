@@ -48,6 +48,9 @@ class VolcengineASR: NSObject, URLSessionWebSocketDelegate {
     /// Called on error (on main thread)
     var onError: ((String) -> Void)?
 
+    /// Hotwords to boost recognition (max 100). Sent via corpus.context.
+    var hotwords: [String] = []
+
     init(appId: String, token: String, cluster: String) {
         self.appId = appId
         self.token = token
@@ -224,7 +227,7 @@ class VolcengineASR: NSObject, URLSessionWebSocketDelegate {
     }
 
     private func sendFullClientRequest() {
-        let config: [String: Any] = [
+        var config: [String: Any] = [
             "user": [
                 "uid": "voiceinput_mac"
             ],
@@ -245,6 +248,16 @@ class VolcengineASR: NSObject, URLSessionWebSocketDelegate {
                 "show_utterances": true
             ]
         ]
+
+        // Add hotwords via corpus.context (max 100)
+        if !hotwords.isEmpty {
+            let words = hotwords.prefix(100).map { ["word": $0] }
+            if let jsonData = try? JSONSerialization.data(withJSONObject: ["hotwords": words]),
+               let jsonStr = String(data: jsonData, encoding: .utf8) {
+                config["corpus"] = ["context": jsonStr]
+                print("[VolcASR] Hotwords: \(words.count) words")
+            }
+        }
 
         guard let jsonData = try? JSONSerialization.data(withJSONObject: config),
               let compressed = gzipCompress(jsonData) else {

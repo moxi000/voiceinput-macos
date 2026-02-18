@@ -7,6 +7,7 @@ enum DataPaths {
     }()
 
     static let replacementsFile: URL = supportDirectory.appendingPathComponent("replacements.txt")
+    static let hotwordsFile: URL = supportDirectory.appendingPathComponent("hotwords.txt")
     static let historyFile: URL = supportDirectory.appendingPathComponent("history.txt")
 
     static func ensureDataDirectory() {

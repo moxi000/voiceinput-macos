@@ -59,6 +59,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         replacementsItem.target = self
         menu.addItem(replacementsItem)
 
+        let hotwordsItem = NSMenuItem(title: "编辑热词表...", action: #selector(openHotwordsFile), keyEquivalent: "")
+        hotwordsItem.target = self
+        menu.addItem(hotwordsItem)
+
         let historyItem = NSMenuItem(title: "查看输入历史...", action: #selector(openHistoryFile), keyEquivalent: "")
         historyItem.target = self
         menu.addItem(historyItem)
@@ -114,6 +118,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             defaultContent: "# 词汇替换表\n# 格式: 原词:替换词 或 原词→替换词\n# 每行一条，#开头为注释\n"
         )
         NSWorkspace.shared.open(DataPaths.replacementsFile)
+    }
+
+    @objc private func openHotwordsFile() {
+        DataPaths.ensureFileExists(
+            at: DataPaths.hotwordsFile,
+            defaultContent: "# 热词表 (每行一个，最多100个，#开头为注释)\n# 用于提升人名、产品名等专有词汇的识别准确率\n"
+        )
+        NSWorkspace.shared.open(DataPaths.hotwordsFile)
+    }
+
+    private func loadHotwords() -> [String] {
+        guard let content = try? String(contentsOf: DataPaths.hotwordsFile, encoding: .utf8) else {
+            return []
+        }
+        return content.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
     }
 
     @objc private func openHistoryFile() {
@@ -204,6 +225,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Create ASR and connect WebSocket BEFORE recording starts
         asr = VolcengineASR(appId: appId, token: token, cluster: cluster)
+        asr?.hotwords = loadHotwords()
 
         asr?.onPartialResult = { [weak self] text in
             self?.overlay.updateText(text)
