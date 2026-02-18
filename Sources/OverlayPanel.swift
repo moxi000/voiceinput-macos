@@ -16,6 +16,11 @@ class OverlayPanel {
         didSet { viewModel.minimal = minimal }
     }
 
+    /// When true, shows local ASR indicator; otherwise cloud indicator.
+    var isLocal: Bool = false {
+        didSet { viewModel.isLocal = isLocal }
+    }
+
     func show() {
         if panel != nil {
             resizePanelForMode()
@@ -136,6 +141,7 @@ class OverlayViewModel: ObservableObject {
     @Published var isVisible: Bool = false
     @Published var minimal: Bool = false
     @Published var audioLevels: [CGFloat] = Array(repeating: 0, count: 5)
+    @Published var isLocal: Bool = false
     /// Called from SwiftUI when the desired panel height changes.
     var onPanelHeightChange: ((CGFloat) -> Void)?
 }
@@ -203,6 +209,8 @@ struct OverlayContentView: View {
                 WaveformView(levels: viewModel.audioLevels)
                     .frame(width: 28, height: 16)
             }
+
+            providerIcon
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -249,9 +257,12 @@ struct OverlayContentView: View {
                 .frame(width: 24, height: 24)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(statusLabel)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    Text(statusLabel)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                    providerIcon
+                }
 
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: true) {
@@ -309,6 +320,12 @@ struct OverlayContentView: View {
                     .font(.system(size: 18))
             }
         }
+    }
+
+    private var providerIcon: some View {
+        Image(systemName: viewModel.isLocal ? "desktopcomputer" : "cloud.fill")
+            .font(.system(size: 9, weight: .medium))
+            .foregroundColor(.secondary.opacity(0.7))
     }
 
     private var statusLabel: String {

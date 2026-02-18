@@ -361,6 +361,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Show overlay (minimal in inline mode)
         overlay.minimal = isInlineMode
+        overlay.isLocal = (asrProvider == "local")
         overlay.setState(.recording)
         overlay.updateText("")
         overlay.show()
