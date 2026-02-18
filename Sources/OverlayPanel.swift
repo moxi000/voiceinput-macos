@@ -3,13 +3,11 @@ import SwiftUI
 
 /// A floating, non-activating panel at the bottom center of the screen.
 /// Shows real-time transcription text with a frosted glass appearance.
-/// Height auto-sizes to fit content (scrollable when exceeding max); bottom edge stays anchored.
+/// Height is manually driven by SwiftUI content measurement; bottom edge stays anchored.
 class OverlayPanel {
     private var panel: NSPanel?
-    private var hostingView: NSHostingView<OverlayContentView>?
     private let viewModel = OverlayViewModel()
     private let panelWidth: CGFloat = 500
-    private var resizeObserver: Any?
 
     func show() {
         if panel != nil {
@@ -20,7 +18,7 @@ class OverlayPanel {
 
         let content = OverlayContentView(viewModel: viewModel)
         let hosting = NSHostingView(rootView: content)
-        hosting.sizingOptions = [.intrinsicContentSize]
+        hosting.sizingOptions = []  // We drive panel sizing manually
 
         let initialHeight: CGFloat = 60
         hosting.frame = NSRect(x: 0, y: 0, width: panelWidth, height: initialHeight)
@@ -39,17 +37,8 @@ class OverlayPanel {
         p.isMovableByWindowBackground = false
         p.hidesOnDeactivate = false
 
-        // Lock width, allow height to vary with content up to screen limit
-        p.contentMinSize = NSSize(width: panelWidth, height: 0)
-        if let screen = NSScreen.main {
-            let maxH = screen.visibleFrame.height - 200
-            p.contentMaxSize = NSSize(width: panelWidth, height: maxH)
-        } else {
-            p.contentMaxSize = NSSize(width: panelWidth, height: 10000)
-        }
         hosting.autoresizingMask = [.width, .height]
         p.contentView = hosting
-        hostingView = hosting
 
         // Position: bottom of panel at screen bottom + 60
         if let screen = NSScreen.main {
@@ -59,14 +48,9 @@ class OverlayPanel {
             p.setFrameOrigin(NSPoint(x: x, y: y))
         }
 
-        // When NSHostingView auto-resizes the panel, it keeps top-left fixed.
-        // We want bottom-left fixed, so re-anchor on every resize.
-        resizeObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.didResizeNotification,
-            object: p,
-            queue: .main
-        ) { [weak self] _ in
-            self?.enforcePosition()
+        // SwiftUI reports measured content height → we resize the panel
+        viewModel.onPanelHeightChange = { [weak self] height in
+            self?.resizePanel(height: height)
         }
 
         p.orderFront(nil)
@@ -81,23 +65,21 @@ class OverlayPanel {
 
     func updateText(_ text: String) {
         viewModel.text = text
-        enforcePosition()
     }
 
     func setState(_ state: OverlayState) {
         viewModel.state = state
-        enforcePosition()
     }
 
-    /// Keep the panel's bottom edge at screenFrame.minY + 60, centered horizontally.
-    private func enforcePosition() {
+    private func resizePanel(height: CGFloat) {
         guard let p = panel, let screen = NSScreen.main else { return }
         let screenFrame = screen.visibleFrame
+        let clamped = max(height, 50)
         let x = screenFrame.midX - panelWidth / 2
         let y = screenFrame.minY + 60
-        let origin = NSPoint(x: x, y: y)
-        if p.frame.origin != origin {
-            p.setFrameOrigin(origin)
+        let newFrame = NSRect(x: x, y: y, width: panelWidth, height: clamped)
+        if p.frame != newFrame {
+            p.setFrame(newFrame, display: true)
         }
     }
 }
@@ -115,15 +97,17 @@ class OverlayViewModel: ObservableObject {
     @Published var text: String = ""
     @Published var state: OverlayState = .recording
     @Published var isVisible: Bool = false
+    /// Called from SwiftUI when the desired panel height changes.
+    var onPanelHeightChange: ((CGFloat) -> Void)?
 }
 
 // MARK: - SwiftUI View
 
-/// Measures the actual rendered height of content and reports it via PreferenceKey.
+/// Measures the rendered height of text content.
 private struct TextHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 20
+    static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+        value = max(value, nextValue())
     }
 }
 
@@ -131,18 +115,24 @@ struct OverlayContentView: View {
     @ObservedObject var viewModel: OverlayViewModel
     @State private var textHeight: CGFloat = 20
 
-    private var maxContentHeight: CGFloat {
+    // Non-text overhead: vertical padding (14*2) + status label (~15) + VStack spacing (2)
+    private let chromeHeight: CGFloat = 46
+
+    private var maxPanelHeight: CGFloat {
         let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
         return screenHeight - 200
     }
 
+    /// Max height for the scrollable text area
+    private var maxScrollHeight: CGFloat {
+        maxPanelHeight - chromeHeight
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Status indicator
             statusIcon
                 .frame(width: 24, height: 24)
 
-            // Text
             VStack(alignment: .leading, spacing: 2) {
                 Text(statusLabel)
                     .font(.system(size: 11, weight: .medium))
@@ -160,9 +150,11 @@ struct OverlayContentView: View {
                             })
                             .id("bottom")
                     }
-                    .frame(height: min(textHeight, maxContentHeight))
+                    .frame(height: min(textHeight, maxScrollHeight))
                     .onPreferenceChange(TextHeightKey.self) { height in
                         textHeight = height
+                        let panelH = min(height + chromeHeight, maxPanelHeight)
+                        viewModel.onPanelHeightChange?(panelH)
                     }
                     .onChange(of: viewModel.text) { _ in
                         proxy.scrollTo("bottom", anchor: .bottom)

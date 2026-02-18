@@ -135,19 +135,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let mask: CGEventMask = (1 << CGEventType.keyDown.rawValue)
+            | (1 << CGEventType.otherMouseDown.rawValue)
         let callback: CGEventTapCallBack = { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
-            guard type == .keyDown else { return Unmanaged.passUnretained(event) }
+            let delegate = Unmanaged<AppDelegate>.fromOpaque(refcon!).takeUnretainedValue()
 
-            let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-            let flags = event.flags
+            // Middle mouse button (button 2)
+            if type == .otherMouseDown && event.getIntegerValueField(.mouseEventButtonNumber) == 2 {
+                DispatchQueue.main.async { delegate.toggleRecording() }
+                return nil
+            }
 
-            // Option+Z: keyCode 6 = Z, check for Option flag
-            if keyCode == 6 && flags.contains(.maskAlternate) {
-                let delegate = Unmanaged<AppDelegate>.fromOpaque(refcon!).takeUnretainedValue()
-                DispatchQueue.main.async {
-                    delegate.toggleRecording()
+            // Option+Z: keyCode 6 = Z
+            if type == .keyDown {
+                let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+                if keyCode == 6 && event.flags.contains(.maskAlternate) {
+                    DispatchQueue.main.async { delegate.toggleRecording() }
+                    return nil
                 }
-                return nil // Consume the event
             }
 
             return Unmanaged.passUnretained(event)
