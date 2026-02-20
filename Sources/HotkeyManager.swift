@@ -312,7 +312,7 @@ class HotkeyManager {
     // MARK: - Modifier-only double-tap
 
     private func checkModifierOnly(_ config: HotkeyConfig?, tag: String, mode: HotkeyMode) -> Unmanaged<CGEvent>? {
-        guard let cfg = config, cfg.keyCode < 0 else { return nil }
+        guard let cfg = config, cfg.keyCode == -1 else { return nil }
 
         let targetMods = cfg.modifiers.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
         let isPressed = currentModifiers.contains(targetMods)
