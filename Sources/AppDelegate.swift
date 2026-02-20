@@ -19,14 +19,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         set { UserDefaults.standard.set(newValue, forKey: "inline_mode") }
     }
 
-    // API credentials (stored in UserDefaults)
+    // API credentials (stored in Keychain)
     private var appId: String {
-        get { UserDefaults.standard.string(forKey: "volcengine_app_id") ?? "" }
-        set { UserDefaults.standard.set(newValue, forKey: "volcengine_app_id") }
+        get { KeychainHelper.load(key: "volcengine_app_id") ?? "" }
+        set { KeychainHelper.save(key: "volcengine_app_id", value: newValue) }
     }
     private var token: String {
-        get { UserDefaults.standard.string(forKey: "volcengine_token") ?? "" }
-        set { UserDefaults.standard.set(newValue, forKey: "volcengine_token") }
+        get { KeychainHelper.load(key: "volcengine_token") ?? "" }
+        set { KeychainHelper.save(key: "volcengine_token", value: newValue) }
     }
     private var cluster: String {
         get { UserDefaults.standard.string(forKey: "volcengine_cluster") ?? "volc.seedasr.sauc.duration" }
@@ -54,6 +54,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         DataPaths.ensureDataDirectory()
+        migrateCredentialsToKeychain()
         setupMenuBar()
         setupGlobalHotkey()
         print("[AppDelegate] VoiceInput ready. Press Option+Z to start/stop recording.")
@@ -151,7 +152,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             appId = appIdField.stringValue
             token = tokenField.stringValue
             cluster = clusterField.stringValue
-            print("[AppDelegate] Credentials saved (appId=\(appId), resourceId=\(cluster))")
+            print("[AppDelegate] Credentials saved (resourceId=\(cluster))")
         }
     }
 
@@ -471,6 +472,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         asr = nil
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "VoiceInput")
+        }
+    }
+
+    /// One-time migration: move credentials from UserDefaults to Keychain.
+    private func migrateCredentialsToKeychain() {
+        let defaults = UserDefaults.standard
+        if let oldAppId = defaults.string(forKey: "volcengine_app_id"), !oldAppId.isEmpty,
+           KeychainHelper.load(key: "volcengine_app_id") == nil {
+            KeychainHelper.save(key: "volcengine_app_id", value: oldAppId)
+            defaults.removeObject(forKey: "volcengine_app_id")
+            print("[AppDelegate] Migrated appId to Keychain")
+        }
+        if let oldToken = defaults.string(forKey: "volcengine_token"), !oldToken.isEmpty,
+           KeychainHelper.load(key: "volcengine_token") == nil {
+            KeychainHelper.save(key: "volcengine_token", value: oldToken)
+            defaults.removeObject(forKey: "volcengine_token")
+            print("[AppDelegate] Migrated token to Keychain")
         }
     }
 }
