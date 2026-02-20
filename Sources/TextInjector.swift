@@ -15,7 +15,7 @@ class TextInjector {
 
         // Re-activate the target app if provided
         if let app = targetApp {
-            app.activate(options: [.activateIgnoringOtherApps])
+            app.activate()
             // Small delay to let the app come to front
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 simulatePaste()

@@ -284,7 +284,7 @@ struct OverlayContentView: View {
                         let panelH = min(height + chromeHeight, maxPanelHeight)
                         viewModel.onPanelHeightChange?(panelH)
                     }
-                    .onChange(of: viewModel.text) { _ in
+                    .onChange(of: viewModel.text) {
                         proxy.scrollTo("bottom", anchor: .bottom)
                     }
                 }
