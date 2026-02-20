@@ -123,7 +123,7 @@ class HotkeyRecorderView: NSTextField {
                 // Start/reset a timer: if no key is pressed within 1s,
                 // accept as modifier-only hotkey (double-tap trigger)
                 modifierTimer?.invalidate()
-                modifierTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
+                let timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
                     guard let self = self, self.isRecording else { return }
                     let cgFlags = self.convertModifiers(self.currentModifiers)
                     self.onHotkeyRecorded?(-1, cgFlags)
@@ -131,6 +131,8 @@ class HotkeyRecorderView: NSTextField {
                     self.stringValue = config.displayString
                     self.stopRecording()
                 }
+                RunLoop.current.add(timer, forMode: .common)
+                modifierTimer = timer
             }
             // When all modifiers are released without pressing a key,
             // keep waiting (don't reset) — user may re-press
