@@ -21,7 +21,7 @@ class InlineTextInjector {
         let commonLen = commonPrefixLength(oldChars, newChars)
 
         let deleteCount = oldChars.count - commonLen
-        let insertSuffix = String(newChars[commonLen...])
+        let insertSuffix = String(newFullText.dropFirst(commonLen))
 
         if deleteCount == 0 && insertSuffix.isEmpty { return }
 
