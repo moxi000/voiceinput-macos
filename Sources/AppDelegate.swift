@@ -327,6 +327,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showHotkeyConfigDialog(title: String, info: String, current: HotkeyConfig?,
                                          onSave: @escaping (HotkeyConfig?) -> Void) {
+        // Suspend hotkey handling so key presses go to the recorder, not the app
+        hotkeyManager.suspended = true
+
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = info
@@ -346,7 +349,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: "保存")
         alert.addButton(withTitle: "取消")
 
-        if alert.runModal() == .alertFirstButtonReturn,
+        let result = alert.runModal()
+        hotkeyManager.suspended = false
+
+        if result == .alertFirstButtonReturn,
            let kc = pendingKeyCode, let mods = pendingModifiers {
             let config = HotkeyConfig(keyCode: kc, modifiers: mods)
             onSave(config)

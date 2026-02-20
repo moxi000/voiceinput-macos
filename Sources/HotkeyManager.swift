@@ -100,7 +100,8 @@ class HotkeyManager {
 
     private var eventTap: CFMachPort?
     private var isHolding = false
-    private var activeMode: HotkeyMode?  // which mode triggered current recording
+    private var activeMode: HotkeyMode?
+    var suspended = false  // suppress all hotkey handling (e.g. during config dialog)  // which mode triggered current recording
 
     // Double-modifier detection (for modifier-only hotkeys)
     private var lastModTapTime: [String: Date] = [:]  // "hold"/"free" -> last tap time
@@ -210,6 +211,8 @@ class HotkeyManager {
     // MARK: - Event Dispatch
 
     private func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        // Skip all handling while suspended (e.g. hotkey config dialog open)
+        if suspended { return Unmanaged.passUnretained(event) }
         // Middle mouse button — always hands-free toggle
         if type == .otherMouseDown && event.getIntegerValueField(.mouseEventButtonNumber) == 2 {
             DispatchQueue.main.async { [weak self] in
