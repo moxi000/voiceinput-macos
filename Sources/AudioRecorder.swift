@@ -17,8 +17,19 @@ class AudioRecorder {
     func start() throws {
         guard !isRecording else { return }
 
+        // Ensure clean state: remove any leftover tap and reset engine
+        // This prevents ObjC exception on re-start after error/timeout
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        engine.reset()
+
         let inputNode = engine.inputNode
         let hardwareFormat = inputNode.outputFormat(forBus: 0)
+
+        guard hardwareFormat.sampleRate > 0, hardwareFormat.channelCount > 0 else {
+            throw NSError(domain: "AudioRecorder", code: 3,
+                          userInfo: [NSLocalizedDescriptionKey: "No audio input available (sampleRate=\(hardwareFormat.sampleRate))"])
+        }
 
         // Target: 16kHz, mono, 16-bit integer PCM
         guard let targetFormat = AVAudioFormat(
