@@ -6,9 +6,14 @@ enum WordReplacer {
         guard let content = try? String(contentsOf: url, encoding: .utf8) else {
             return text
         }
+        return applyReplacements(rules: content, to: text)
+    }
 
+    /// Apply replacement rules given as a multi-line string.
+    /// Exposed as internal for testability.
+    static func applyReplacements(rules: String, to text: String) -> String {
         var result = text
-        for line in content.components(separatedBy: .newlines) {
+        for line in rules.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard !trimmed.isEmpty, !trimmed.hasPrefix("#") else { continue }
 

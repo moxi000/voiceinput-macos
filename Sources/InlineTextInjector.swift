@@ -16,20 +16,15 @@ class InlineTextInjector {
     /// Update the typed text to match `newFullText`.
     /// Diffs against lastTypedText: deletes from divergence point, then types new suffix.
     func update(to newFullText: String) {
-        let oldChars = Array(lastTypedText)
-        let newChars = Array(newFullText)
-        let commonLen = commonPrefixLength(oldChars, newChars)
+        let diff = InlineTextInjector.computeDiff(old: lastTypedText, new: newFullText)
 
-        let deleteCount = oldChars.count - commonLen
-        let insertSuffix = String(newFullText.dropFirst(commonLen))
+        if diff.deleteCount == 0 && diff.insertSuffix.isEmpty { return }
 
-        if deleteCount == 0 && insertSuffix.isEmpty { return }
-
-        if deleteCount > 0 {
-            sendBackspaces(count: deleteCount)
+        if diff.deleteCount > 0 {
+            sendBackspaces(count: diff.deleteCount)
         }
-        if !insertSuffix.isEmpty {
-            sendString(insertSuffix)
+        if !diff.insertSuffix.isEmpty {
+            sendString(diff.insertSuffix)
         }
 
         lastTypedText = newFullText
@@ -91,13 +86,25 @@ class InlineTextInjector {
         }
     }
 
-    // MARK: - Diffing
+    // MARK: - Diffing (internal for testability)
 
-    private func commonPrefixLength(_ a: [Character], _ b: [Character]) -> Int {
+    /// Compute the number of characters that match at the start of both arrays.
+    static func commonPrefixLength(_ a: [Character], _ b: [Character]) -> Int {
         let minLen = min(a.count, b.count)
         for i in 0..<minLen {
             if a[i] != b[i] { return i }
         }
         return minLen
+    }
+
+    /// Compute the diff between old and new text.
+    /// Returns how many characters to delete from the end and what suffix to insert.
+    static func computeDiff(old: String, new: String) -> (deleteCount: Int, insertSuffix: String) {
+        let oldChars = Array(old)
+        let newChars = Array(new)
+        let commonLen = commonPrefixLength(oldChars, newChars)
+        let deleteCount = oldChars.count - commonLen
+        let insertSuffix = String(new.dropFirst(commonLen))
+        return (deleteCount, insertSuffix)
     }
 }
