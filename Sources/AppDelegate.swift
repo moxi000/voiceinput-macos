@@ -435,11 +435,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.overlay.updateText(processedText.isEmpty ? "无输入" : processedText)
 
             let targetApp = self?.previousApp
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            if !processedText.isEmpty {
+                TextInjector.paste(processedText, targetApp: targetApp)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 self?.overlay.hide()
-                if !processedText.isEmpty {
-                    TextInjector.paste(processedText, targetApp: targetApp)
-                }
             }
         }
 
@@ -469,7 +469,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             self?.overlay.setState(.done)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 self?.overlay.hide()
             }
         }
