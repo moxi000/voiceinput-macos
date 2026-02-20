@@ -114,10 +114,11 @@ class HotkeyRecorderView: NSTextField {
         } else if event.type == .flagsChanged {
             // Track which modifiers are currently held
             let mods = event.modifierFlags.intersection([.control, .option, .shift, .command])
+            // Always sync — including when all modifiers are released
+            currentModifiers = mods
 
             if !mods.isEmpty {
-                // Modifier pressed — accumulate and show live preview
-                currentModifiers = mods
+                // Modifier pressed — show live preview
                 stringValue = modifierDisplayString(mods) + "..."
 
                 // Start/reset a timer: if no key is pressed within 1s,
