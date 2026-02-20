@@ -178,7 +178,8 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
         if closeCode == .normalClosure && !didEmitFinal {
             didEmitFinal = true
             let text = lastReceivedText
-            print("[VolcASR] ✅ Final (on close): \"\(text)\"")
+            let logText = HistoryLogger.enabled ? text : "<redacted>"
+            print("[VolcASR] Final (on close): \(logText)")
             DispatchQueue.main.async { self.onFinalResult?(text) }
         }
     }
@@ -417,12 +418,14 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
         if isLast || sequence < 0 {
             didEmitFinal = true
             lastReceivedText = fullText
-            print("[VolcASR] ✅ Final: \"\(fullText)\"")
+            let logText1 = HistoryLogger.enabled ? fullText : "<redacted>"
+            print("[VolcASR] Final: \(logText1)")
             DispatchQueue.main.async { self.onFinalResult?(fullText) }
             webSocket?.cancel(with: .normalClosure, reason: nil)
         } else {
             lastReceivedText = fullText
-            print("[VolcASR] \(hasDefinite ? "✓" : "…") \"\(fullText)\"")
+            let logText2 = HistoryLogger.enabled ? fullText : "<redacted>"
+            print("[VolcASR] \(hasDefinite ? "confirmed" : "partial") \(logText2)")
             DispatchQueue.main.async { self.onPartialResult?(fullText) }
         }
     }

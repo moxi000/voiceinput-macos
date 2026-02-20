@@ -7,8 +7,11 @@ enum HistoryLogger {
         return f
     }()
 
+    /// When false, calls to `log()` are no-ops (privacy mode).
+    static var enabled: Bool = true
+
     static func log(_ text: String) {
-        guard !text.isEmpty else { return }
+        guard enabled, !text.isEmpty else { return }
 
         DataPaths.ensureFileExists(at: DataPaths.historyFile)
 

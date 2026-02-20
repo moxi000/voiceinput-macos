@@ -13,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var previousApp: NSRunningApplication?  // app that was focused before recording
     private var modeMenuItem: NSMenuItem!
     private var providerMenuItem: NSMenuItem!
+    private var privacyMenuItem: NSMenuItem!
 
     private var isInlineMode: Bool {
         get { UserDefaults.standard.bool(forKey: "inline_mode") }
@@ -52,9 +53,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         set { UserDefaults.standard.set(Int(newValue), forKey: "local_asr_port") }
     }
 
+    private var privacyMode: Bool {
+        get { UserDefaults.standard.bool(forKey: "privacy_mode") }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "privacy_mode")
+            applyPrivacyMode()
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         DataPaths.ensureDataDirectory()
         migrateCredentialsToKeychain()
+        applyPrivacyMode()
         setupMenuBar()
         setupGlobalHotkey()
         print("[AppDelegate] VoiceInput ready. Press Option+Z to start/stop recording.")
@@ -110,6 +120,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let historyItem = NSMenuItem(title: "查看输入历史...", action: #selector(openHistoryFile), keyEquivalent: "")
         historyItem.target = self
         menu.addItem(historyItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        privacyMenuItem = NSMenuItem(title: "隐私模式", action: #selector(togglePrivacy), keyEquivalent: "")
+        privacyMenuItem.target = self
+        privacyMenuItem.state = privacyMode ? .on : .off
+        menu.addItem(privacyMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -204,6 +221,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         asrProvider = (asrProvider == "local") ? "volcengine" : "local"
         providerMenuItem.title = asrProvider == "local" ? "切换到云端识别" : "切换到本地识别"
         print("[AppDelegate] ASR provider: \(asrProvider)")
+    }
+
+    @objc private func togglePrivacy() {
+        privacyMode.toggle()
+        privacyMenuItem.state = privacyMode ? .on : .off
+        print("[AppDelegate] Privacy mode: \(privacyMode ? "ON" : "OFF")")
+    }
+
+    private func applyPrivacyMode() {
+        HistoryLogger.enabled = !privacyMode
     }
 
     @objc private func showLocalASRDialog() {

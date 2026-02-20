@@ -255,11 +255,13 @@ class LocalASR: ASRService {
                 return false
             }
             guard !alreadyEmitted else { return }
-            print("[LocalASR] Final: \"\(text)\"")
+            let logText = HistoryLogger.enabled ? text : "<redacted>"
+            print("[LocalASR] Final: \(logText)")
             DispatchQueue.main.async { self.onFinalResult?(text) }
             connection?.cancel()
         } else if !text.isEmpty {
-            print("[LocalASR] Partial: \"\(text)\"")
+            let logText2 = HistoryLogger.enabled ? text : "<redacted>"
+            print("[LocalASR] Partial: \(logText2)")
             DispatchQueue.main.async { self.onPartialResult?(text) }
         }
     }
