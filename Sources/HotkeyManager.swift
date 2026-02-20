@@ -315,7 +315,7 @@ class HotkeyManager {
         guard let cfg = config, cfg.keyCode == -1 else { return nil }
 
         let targetMods = cfg.modifiers.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
-        let isPressed = currentModifiers.contains(targetMods)
+        let isPressed = currentModifiers == targetMods
 
         if isPressed {
             let now = Date()
