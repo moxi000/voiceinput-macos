@@ -361,6 +361,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startRecording() {
         // Cancel any previous ASR session to prevent stale results
+        asr?.onError = nil
+        asr?.onFinalResult = nil
+        asr?.onPartialResult = nil
         asr?.cancel()
         asr = nil
 

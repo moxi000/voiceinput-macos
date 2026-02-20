@@ -188,6 +188,12 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
                     didCompleteWithError error: Error?) {
         stateQueue.sync { _isConnected = false }
         if let error = error {
+            // Ignore cancellation errors from our own cancel() calls
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
+                print("[VolcASR] Session cancelled (ignored)")
+                return
+            }
             print("[VolcASR] ❌ Connection error: \(error.localizedDescription)")
             if let httpResp = task.response as? HTTPURLResponse {
                 print("[VolcASR] HTTP status: \(httpResp.statusCode)")
