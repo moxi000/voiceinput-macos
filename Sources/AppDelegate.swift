@@ -14,8 +14,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var modeMenuItem: NSMenuItem!
     private var providerMenuItem: NSMenuItem!
     private var privacyMenuItem: NSMenuItem!
-    private var hotkeyModeMenuItem: NSMenuItem!
-    private var hotkeyMenuItem: NSMenuItem!
+    private var holdHotkeyMenuItem: NSMenuItem!
+    private var freeHotkeyMenuItem: NSMenuItem!
 
     private var isInlineMode: Bool {
         get { UserDefaults.standard.bool(forKey: "inline_mode") }
@@ -67,6 +67,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DataPaths.ensureDataDirectory()
         migrateCredentialsToKeychain()
         applyPrivacyMode()
+        hotkeyManager = HotkeyManager()
         setupMenuBar()
         setupHotkeyManager()
         print("[AppDelegate] VoiceInput ready.")
@@ -132,18 +133,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let hotkeyConfig = HotkeyConfig.load()
-        hotkeyModeMenuItem = NSMenuItem(
-            title: hotkeyConfig.mode == .holdToTalk ? "快捷键模式: 按住说话" : "快捷键模式: 免提",
-            action: #selector(toggleHotkeyMode), keyEquivalent: "")
-        hotkeyModeMenuItem.target = self
-        menu.addItem(hotkeyModeMenuItem)
+        let holdLabel = hotkeyManager.holdToTalkConfig?.displayString ?? "未设置"
+        holdHotkeyMenuItem = NSMenuItem(
+            title: "按住说话快捷键: \(holdLabel)",
+            action: #selector(showHoldHotkeyDialog), keyEquivalent: "")
+        holdHotkeyMenuItem.target = self
+        menu.addItem(holdHotkeyMenuItem)
 
-        hotkeyMenuItem = NSMenuItem(
-            title: "设置快捷键 (当前: \(hotkeyConfig.displayString))...",
-            action: #selector(showHotkeyDialog), keyEquivalent: "")
-        hotkeyMenuItem.target = self
-        menu.addItem(hotkeyMenuItem)
+        let freeLabel = hotkeyManager.handsFreeConfig?.displayString ?? "鼠标中键"
+        freeHotkeyMenuItem = NSMenuItem(
+            title: "免提快捷键: \(freeLabel)",
+            action: #selector(showFreeHotkeyDialog), keyEquivalent: "")
+        freeHotkeyMenuItem.target = self
+        menu.addItem(freeHotkeyMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -289,8 +291,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Hotkey Manager
 
     private func setupHotkeyManager() {
-        hotkeyManager = HotkeyManager(config: .load())
-        hotkeyManager.onRecordStart = { [weak self] in
+        hotkeyManager = HotkeyManager()
+        hotkeyManager.onRecordStart = { [weak self] mode in
             guard let self = self, !self.recorder.recording else { return }
             self.startRecording()
         }
@@ -301,20 +303,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         _ = hotkeyManager.install()
     }
 
-    @objc private func toggleHotkeyMode() {
-        var config = hotkeyManager.config
-        config.mode = (config.mode == .holdToTalk) ? .handsFree : .holdToTalk
-        hotkeyManager.updateConfig(config)
-        hotkeyModeMenuItem.title = config.mode == .holdToTalk ? "快捷键模式: 按住说话" : "快捷键模式: 免提"
+    @objc private func showHoldHotkeyDialog() {
+        showHotkeyConfigDialog(
+            title: "设置“按住说话”快捷键",
+            info: "按住开始录音，松开停止。\n点击下方输入框，然后按下快捷键组合。",
+            current: hotkeyManager.holdToTalkConfig
+        ) { [weak self] config in
+            self?.hotkeyManager.setHoldToTalk(config)
+            self?.holdHotkeyMenuItem.title = "按住说话快捷键: \(config?.displayString ?? "未设置")"
+        }
     }
 
-    @objc private func showHotkeyDialog() {
+    @objc private func showFreeHotkeyDialog() {
+        showHotkeyConfigDialog(
+            title: "设置“免提”快捷键",
+            info: "按一次开始录音，再按一次停止。\n鼠标中键始终可用。\n点击下方输入框，然后按下快捷键组合。",
+            current: hotkeyManager.handsFreeConfig
+        ) { [weak self] config in
+            self?.hotkeyManager.setHandsFree(config)
+            self?.freeHotkeyMenuItem.title = "免提快捷键: \(config?.displayString ?? "鼠标中键")"
+        }
+    }
+
+    private func showHotkeyConfigDialog(title: String, info: String, current: HotkeyConfig?,
+                                         onSave: @escaping (HotkeyConfig?) -> Void) {
         let alert = NSAlert()
-        alert.messageText = "设置快捷键"
-        alert.informativeText = "点击下方输入框，然后按下想要的快捷键组合。\n按 Esc 取消。单独按下修饰键可设为双击修饰键触发。"
+        alert.messageText = title
+        alert.informativeText = info
 
         let recorder = HotkeyRecorderView(frame: NSRect(x: 0, y: 0, width: 250, height: 28))
-        recorder.display(hotkeyManager.config)
+        if let c = current { recorder.display(c) }
 
         var pendingKeyCode: Int64?
         var pendingModifiers: CGEventFlags?
@@ -330,12 +348,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if alert.runModal() == .alertFirstButtonReturn,
            let kc = pendingKeyCode, let mods = pendingModifiers {
-            var config = hotkeyManager.config
-            config.keyCode = kc
-            config.modifiers = mods
-            hotkeyManager.updateConfig(config)
-            hotkeyMenuItem.title = "设置快捷键 (当前: \(config.displayString))..."
-            print("[AppDelegate] Hotkey changed to: \(config.displayString)")
+            let config = HotkeyConfig(keyCode: kc, modifiers: mods)
+            onSave(config)
         }
     }
 
@@ -508,7 +522,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "VoiceInput")
         }
-        hotkeyManager?.resetHoldState()
+        hotkeyManager?.resetState()
     }
 
     /// One-time migration: move credentials from UserDefaults to Keychain.

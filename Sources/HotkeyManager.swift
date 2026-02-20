@@ -11,7 +11,6 @@ enum HotkeyMode: String {
 struct HotkeyConfig: Equatable {
     var keyCode: Int64           // virtual key code, -1 for modifier-only
     var modifiers: CGEventFlags  // required modifiers
-    var mode: HotkeyMode
 
     /// Human-readable label, e.g. "⌥Z" or "Double ⌥"
     var displayString: String {
@@ -24,34 +23,42 @@ struct HotkeyConfig: Equatable {
         if keyCode >= 0 {
             parts.append(HotkeyConfig.keyName(for: keyCode))
         } else {
-            // Modifier-only: show as "Double ⌥" etc.
             if parts.count == 1 {
-                return "Double \(parts[0])"
+                return "双击\(parts[0])"
             }
         }
         return parts.joined()
     }
 
-    /// Default hotkey: Option+Z, hands-free
-    static let `default` = HotkeyConfig(keyCode: 6, modifiers: .maskAlternate, mode: .handsFree)
+    /// Default hold-to-talk: Option+Z
+    static let defaultHoldToTalk = HotkeyConfig(keyCode: 6, modifiers: .maskAlternate)
+    /// Default hands-free: none (middle mouse only)
+    static let defaultHandsFree: HotkeyConfig? = nil
 
     // MARK: - Persistence
 
-    func save(to defaults: UserDefaults = .standard) {
-        defaults.set(keyCode, forKey: "hotkey_keycode")
-        defaults.set(modifiers.rawValue, forKey: "hotkey_modifiers")
-        defaults.set(mode.rawValue, forKey: "hotkey_mode")
+    func save(prefix: String, to defaults: UserDefaults = .standard) {
+        defaults.set(keyCode, forKey: "\(prefix)_keycode")
+        defaults.set(modifiers.rawValue, forKey: "\(prefix)_modifiers")
+        defaults.set(true, forKey: "\(prefix)_enabled")
     }
 
-    static func load(from defaults: UserDefaults = .standard) -> HotkeyConfig {
-        let code = defaults.object(forKey: "hotkey_keycode") as? Int64 ?? HotkeyConfig.default.keyCode
-        let mods = defaults.object(forKey: "hotkey_modifiers") as? UInt64 ?? HotkeyConfig.default.modifiers.rawValue
-        let modeStr = defaults.string(forKey: "hotkey_mode") ?? HotkeyConfig.default.mode.rawValue
-        return HotkeyConfig(
-            keyCode: code,
-            modifiers: CGEventFlags(rawValue: mods),
-            mode: HotkeyMode(rawValue: modeStr) ?? .handsFree
-        )
+    static func load(prefix: String, fallback: HotkeyConfig?, from defaults: UserDefaults = .standard) -> HotkeyConfig? {
+        guard defaults.bool(forKey: "\(prefix)_enabled") || defaults.object(forKey: "\(prefix)_enabled") == nil else {
+            return fallback
+        }
+        guard let _ = defaults.object(forKey: "\(prefix)_keycode") else {
+            return fallback
+        }
+        let code = defaults.object(forKey: "\(prefix)_keycode") as? Int64 ?? fallback?.keyCode ?? 6
+        let mods = defaults.object(forKey: "\(prefix)_modifiers") as? UInt64 ?? fallback?.modifiers.rawValue ?? 0
+        return HotkeyConfig(keyCode: code, modifiers: CGEventFlags(rawValue: mods))
+    }
+
+    static func clear(prefix: String, from defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: "\(prefix)_keycode")
+        defaults.removeObject(forKey: "\(prefix)_modifiers")
+        defaults.set(false, forKey: "\(prefix)_enabled")
     }
 
     // MARK: - Key name lookup
@@ -78,40 +85,52 @@ struct HotkeyConfig: Equatable {
     }
 }
 
-/// Manages the global hotkey via CGEvent tap.
-/// Supports hold-to-talk, hands-free toggle, double-modifier shortcuts,
-/// and middle mouse button toggle.
+// MARK: - HotkeyManager
+
+/// Manages two global hotkeys via CGEvent tap:
+///   - holdToTalk: press-and-hold to record, release any key to stop
+///   - handsFree:  press to start, press again to stop
+/// Middle mouse button is always hands-free toggle.
 class HotkeyManager {
-    var onRecordStart: (() -> Void)?
+    var onRecordStart: ((_ mode: HotkeyMode) -> Void)?
     var onRecordStop: (() -> Void)?
 
-    private(set) var config: HotkeyConfig
+    private(set) var holdToTalkConfig: HotkeyConfig?
+    private(set) var handsFreeConfig: HotkeyConfig?
+
     private var eventTap: CFMachPort?
-    private var isHolding = false  // for hold-to-talk: is key currently held down?
+    private var isHolding = false
+    private var activeMode: HotkeyMode?  // which mode triggered current recording
 
-    // Double-modifier detection
-    private var lastModifierTapTime: Date?
+    // Double-modifier detection (for modifier-only hotkeys)
+    private var lastModTapTime: [String: Date] = [:]  // "hold"/"free" -> last tap time
     private let doubleTapInterval: TimeInterval = 0.35
-
-    // Track modifier state for modifier-only hotkeys
     private var currentModifiers: CGEventFlags = []
 
-    init(config: HotkeyConfig = .load()) {
-        self.config = config
+    init() {
+        holdToTalkConfig = HotkeyConfig.load(prefix: "hotkey_hold", fallback: .defaultHoldToTalk)
+        handsFreeConfig = HotkeyConfig.load(prefix: "hotkey_free", fallback: nil)
     }
 
-    func updateConfig(_ newConfig: HotkeyConfig) {
-        config = newConfig
-        config.save()
-        isHolding = false
-        lastModifierTapTime = nil
-        print("[HotkeyManager] Updated hotkey: \(config.displayString) mode=\(config.mode.rawValue)")
+    func setHoldToTalk(_ config: HotkeyConfig?) {
+        holdToTalkConfig = config
+        if let c = config { c.save(prefix: "hotkey_hold") }
+        else { HotkeyConfig.clear(prefix: "hotkey_hold") }
+        resetState()
+        print("[HotkeyManager] Hold-to-talk: \(config?.displayString ?? "disabled")")
+    }
+
+    func setHandsFree(_ config: HotkeyConfig?) {
+        handsFreeConfig = config
+        if let c = config { c.save(prefix: "hotkey_free") }
+        else { HotkeyConfig.clear(prefix: "hotkey_free") }
+        resetState()
+        print("[HotkeyManager] Hands-free: \(config?.displayString ?? "middle mouse only")")
     }
 
     // MARK: - Install / Uninstall
 
     func install() -> Bool {
-        // Check accessibility
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         if !AXIsProcessTrustedWithOptions(options) {
             print("[HotkeyManager] Accessibility permission required.")
@@ -155,7 +174,7 @@ class HotkeyManager {
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
-        print("[HotkeyManager] Installed, hotkey: \(config.displayString) mode=\(config.mode.rawValue)")
+        print("[HotkeyManager] Installed. Hold: \(holdToTalkConfig?.displayString ?? "disabled"), Free: \(handsFreeConfig?.displayString ?? "mouse only")")
         return true
     }
 
@@ -166,23 +185,29 @@ class HotkeyManager {
         }
     }
 
-    // MARK: - Event Tap Callback
+    func resetState() {
+        isHolding = false
+        activeMode = nil
+    }
+
+    // MARK: - Event Tap
 
     private static let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
         guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
-        let manager = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
+        let mgr = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
 
-        // Re-enable tap if macOS disabled it (happens on timeout)
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let tap = manager.eventTap {
+            if let tap = mgr.eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
-                print("[HotkeyManager] Re-enabled event tap after disable")
+                print("[HotkeyManager] Re-enabled event tap")
             }
             return Unmanaged.passUnretained(event)
         }
 
-        return manager.handleEvent(type: type, event: event)
+        return mgr.handleEvent(type: type, event: event)
     }
+
+    // MARK: - Event Dispatch
 
     private func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // Middle mouse button — always hands-free toggle
@@ -191,166 +216,137 @@ class HotkeyManager {
                 guard let self = self else { return }
                 if self.isHolding {
                     self.isHolding = false
+                    self.activeMode = nil
                     self.onRecordStop?()
                 } else {
                     self.isHolding = true
-                    self.onRecordStart?()
+                    self.activeMode = .handsFree
+                    self.onRecordStart?(.handsFree)
                 }
             }
             return nil
         }
 
-        // Modifier-only hotkey (keyCode == -1): detect double-tap of modifier
-        if config.keyCode < 0 {
-            if type == .flagsChanged {
-                return handleModifierOnlyHotkey(event: event)
-            }
-            return Unmanaged.passUnretained(event)
-        }
-
-        // Regular key hotkey
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         let flags = event.flags
 
-        // For keyDown: require both keyCode AND modifiers to match
-        if type == .keyDown && keyCode == config.keyCode && matchesModifiers(flags) {
-            return handleKeyDown(event: event)
-        }
-
-        // For keyUp in hold-to-talk: only check keyCode (modifier may already be released)
-        if type == .keyUp && keyCode == config.keyCode && config.mode == .holdToTalk && isHolding {
-            return handleKeyUp(event: event)
-        }
-
-        // For flagsChanged in hold-to-talk: stop if modifier released while holding
-        if type == .flagsChanged && config.mode == .holdToTalk && isHolding {
-            if !matchesModifiers(flags) {
+        // --- If currently holding (recording), check for release ---
+        if isHolding && activeMode == .holdToTalk {
+            // keyUp of the hold key — stop (ignore modifiers, user may release in any order)
+            if type == .keyUp, let htc = holdToTalkConfig, htc.keyCode >= 0, keyCode == htc.keyCode {
                 isHolding = false
-                DispatchQueue.main.async { [weak self] in
-                    self?.onRecordStop?()
-                }
+                activeMode = nil
+                DispatchQueue.main.async { [weak self] in self?.onRecordStop?() }
+                return nil
             }
+            // Modifier released during hold — stop if it was in hold config
+            if type == .flagsChanged, let htc = holdToTalkConfig {
+                if htc.keyCode < 0 || !matchesMods(flags, htc.modifiers) {
+                    isHolding = false
+                    activeMode = nil
+                    DispatchQueue.main.async { [weak self] in self?.onRecordStop?() }
+                }
+                return Unmanaged.passUnretained(event)
+            }
+        }
+
+        // --- Check for hotkey activation ---
+        if type == .flagsChanged {
+            currentModifiers = flags.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
+            // Check modifier-only hotkeys (double-tap)
+            if let result = checkModifierOnly(holdToTalkConfig, tag: "hold", mode: .holdToTalk) { return result }
+            if let result = checkModifierOnly(handsFreeConfig, tag: "free", mode: .handsFree) { return result }
             return Unmanaged.passUnretained(event)
+        }
+
+        if type == .keyDown {
+            let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+            if isRepeat { return isHolding ? nil : Unmanaged.passUnretained(event) }
+
+            // Check hold-to-talk
+            if let htc = holdToTalkConfig, htc.keyCode >= 0,
+               keyCode == htc.keyCode, matchesMods(flags, htc.modifiers) {
+                if !isHolding {
+                    isHolding = true
+                    activeMode = .holdToTalk
+                    DispatchQueue.main.async { [weak self] in self?.onRecordStart?(.holdToTalk) }
+                }
+                return nil
+            }
+
+            // Check hands-free
+            if let hfc = handsFreeConfig, hfc.keyCode >= 0,
+               keyCode == hfc.keyCode, matchesMods(flags, hfc.modifiers) {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    if self.isHolding {
+                        self.isHolding = false
+                        self.activeMode = nil
+                        self.onRecordStop?()
+                    } else {
+                        self.isHolding = true
+                        self.activeMode = .handsFree
+                        self.onRecordStart?(.handsFree)
+                    }
+                }
+                return nil
+            }
+        }
+
+        // keyUp for hands-free: consume but don't act
+        if type == .keyUp {
+            if let hfc = handsFreeConfig, hfc.keyCode >= 0, keyCode == hfc.keyCode {
+                return nil
+            }
         }
 
         return Unmanaged.passUnretained(event)
     }
 
-    // MARK: - Key Handling
+    // MARK: - Modifier-only double-tap
 
-    private func handleKeyDown(event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Ignore key repeats (auto-repeat while holding)
-        let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
-        if isRepeat { return nil }
+    private func checkModifierOnly(_ config: HotkeyConfig?, tag: String, mode: HotkeyMode) -> Unmanaged<CGEvent>? {
+        guard let cfg = config, cfg.keyCode < 0 else { return nil }
 
-        switch config.mode {
-        case .handsFree:
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                if self.isHolding {
-                    self.isHolding = false
-                    self.onRecordStop?()
-                } else {
-                    self.isHolding = true
-                    self.onRecordStart?()
-                }
-            }
-        case .holdToTalk:
-            if !isHolding {
-                isHolding = true
-                DispatchQueue.main.async { [weak self] in
-                    self?.onRecordStart?()
-                }
-            }
-        }
-        return nil  // consume the event
-    }
+        let targetMods = cfg.modifiers.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
+        let isPressed = currentModifiers.contains(targetMods)
 
-    private func handleKeyUp(event: CGEvent) -> Unmanaged<CGEvent>? {
-        switch config.mode {
-        case .handsFree:
-            return nil  // consume but don't act
-        case .holdToTalk:
-            if isHolding {
-                isHolding = false
-                DispatchQueue.main.async { [weak self] in
-                    self?.onRecordStop?()
-                }
-            }
-            return nil
-        }
-    }
-
-    // MARK: - Modifier-Only Hotkey (Double-Tap)
-
-    private func handleModifierOnlyHotkey(event: CGEvent) -> Unmanaged<CGEvent>? {
-        let newFlags = event.flags
-        let targetMod = config.modifiers
-
-        // Isolate just the modifier bits we care about
-        let relevantNew = newFlags.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
-        let targetRelevant = targetMod.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
-
-        // Detect modifier key press (transition from not-pressed to pressed)
-        let wasPressed = currentModifiers.contains(targetRelevant)
-        let isPressed = relevantNew.contains(targetRelevant)
-        currentModifiers = relevantNew
-
-        if isPressed && !wasPressed {
-            // Modifier just pressed — check for double-tap
+        if isPressed {
             let now = Date()
-            if let lastTap = lastModifierTapTime, now.timeIntervalSince(lastTap) < doubleTapInterval {
-                // Double-tap detected!
-                lastModifierTapTime = nil
-
-                switch config.mode {
-                case .handsFree:
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self = self else { return }
+            if let last = lastModTapTime[tag], now.timeIntervalSince(last) < doubleTapInterval {
+                lastModTapTime[tag] = nil
+                // Double-tap detected
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    if mode == .holdToTalk {
+                        if !self.isHolding {
+                            self.isHolding = true
+                            self.activeMode = .holdToTalk
+                            self.onRecordStart?(.holdToTalk)
+                        }
+                    } else {
                         if self.isHolding {
                             self.isHolding = false
+                            self.activeMode = nil
                             self.onRecordStop?()
                         } else {
                             self.isHolding = true
-                            self.onRecordStart?()
-                        }
-                    }
-                case .holdToTalk:
-                    if !isHolding {
-                        isHolding = true
-                        DispatchQueue.main.async { [weak self] in
-                            self?.onRecordStart?()
+                            self.activeMode = .handsFree
+                            self.onRecordStart?(.handsFree)
                         }
                     }
                 }
             } else {
-                lastModifierTapTime = now
-            }
-        } else if !isPressed && wasPressed {
-            // Modifier released
-            if config.mode == .holdToTalk && isHolding {
-                isHolding = false
-                DispatchQueue.main.async { [weak self] in
-                    self?.onRecordStop?()
-                }
+                lastModTapTime[tag] = now
             }
         }
-
-        // Don't consume modifier events — other apps need them
-        return Unmanaged.passUnretained(event)
+        return nil  // don't consume modifier events
     }
 
     // MARK: - Helpers
 
-    private func matchesModifiers(_ flags: CGEventFlags) -> Bool {
+    private func matchesMods(_ flags: CGEventFlags, _ required: CGEventFlags) -> Bool {
         let relevant: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
-        let required = config.modifiers.intersection(relevant)
-        let actual = flags.intersection(relevant)
-        return actual == required
-    }
-
-    /// Reset hold state (called externally when recording stops for other reasons, e.g. ASR error)
-    func resetHoldState() {
-        isHolding = false
+        return flags.intersection(relevant) == required.intersection(relevant)
     }
 }

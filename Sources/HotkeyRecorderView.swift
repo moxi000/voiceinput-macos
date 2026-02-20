@@ -97,7 +97,7 @@ class HotkeyRecorderView: NSTextField {
             let keyCode = Int64(event.keyCode)
             let cgFlags = convertModifiers(currentModifiers.union(event.modifierFlags))
             onHotkeyRecorded?(keyCode, cgFlags)
-            stringValue = HotkeyConfig(keyCode: keyCode, modifiers: cgFlags, mode: .handsFree).displayString
+            stringValue = HotkeyConfig(keyCode: keyCode, modifiers: cgFlags).displayString
             stopRecording()
 
         } else if event.type == .flagsChanged {
@@ -116,7 +116,7 @@ class HotkeyRecorderView: NSTextField {
                     guard let self = self, self.isRecording else { return }
                     let cgFlags = self.convertModifiers(self.currentModifiers)
                     self.onHotkeyRecorded?(-1, cgFlags)
-                    let config = HotkeyConfig(keyCode: -1, modifiers: cgFlags, mode: .handsFree)
+                    let config = HotkeyConfig(keyCode: -1, modifiers: cgFlags)
                     self.stringValue = config.displayString
                     self.stopRecording()
                 }
