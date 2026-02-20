@@ -245,7 +245,9 @@ struct OverlayContentView: View {
         case .recording: return "聆听中"
         case .transcribing: return "识别中"
         case .done: return "完成"
-        case .error: return "出错"
+        case .error(let msg):
+            if msg.isEmpty { return "出错" }
+            return String(msg.prefix(20))
         }
     }
 
