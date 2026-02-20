@@ -5,9 +5,9 @@ import Cocoa
 class TextInjector {
     /// Paste text into a specific app (re-activate it first), or into the current frontmost app.
     static func paste(_ text: String, targetApp: NSRunningApplication? = nil) {
-        // Save current pasteboard content
+        // Save ALL current pasteboard content (including images, RTF, etc.)
         let pasteboard = NSPasteboard.general
-        let previousContents = pasteboard.string(forType: .string)
+        let previousItems = savePasteboardItems(pasteboard)
 
         // Write our text
         pasteboard.clearContents()
@@ -19,11 +19,11 @@ class TextInjector {
             // Small delay to let the app come to front
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 simulatePaste()
-                restorePasteboard(previousContents)
+                restorePasteboard(previousItems)
             }
         } else {
             simulatePaste()
-            restorePasteboard(previousContents)
+            restorePasteboard(previousItems)
         }
 
         print("[TextInjector] Pasted \(text.count) chars to \(targetApp?.localizedName ?? "frontmost")")
@@ -41,13 +41,33 @@ class TextInjector {
         keyUp?.post(tap: .cgSessionEventTap)
     }
 
-    private static func restorePasteboard(_ previous: String?) {
-        if let prev = previous {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                let pasteboard = NSPasteboard.general
-                pasteboard.clearContents()
-                pasteboard.setString(prev, forType: .string)
+    // MARK: - Full Pasteboard Save/Restore
+
+    /// Save all pasteboard items with all their type/data pairs.
+    private static func savePasteboardItems(_ pasteboard: NSPasteboard) -> [[(NSPasteboard.PasteboardType, Data)]] {
+        guard let items = pasteboard.pasteboardItems else { return [] }
+        return items.map { item in
+            item.types.compactMap { type in
+                guard let data = item.data(forType: type) else { return nil }
+                return (type, data)
             }
+        }
+    }
+
+    /// Restore previously saved pasteboard items after a delay.
+    private static func restorePasteboard(_ items: [[(NSPasteboard.PasteboardType, Data)]]) {
+        guard !items.isEmpty else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            let nsItems = items.map { pairs -> NSPasteboardItem in
+                let item = NSPasteboardItem()
+                for (type, data) in pairs {
+                    item.setData(data, forType: type)
+                }
+                return item
+            }
+            pasteboard.writeObjects(nsItems)
         }
     }
 }
