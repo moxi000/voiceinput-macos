@@ -1,13 +1,18 @@
 import Cocoa
 
-/// A text field that captures a key combination when focused.
-/// Used in the hotkey settings dialog.
+/// A dedicated panel for recording a hotkey combination.
+/// Uses global event monitors to capture keys even if focus is lost.
+/// Accumulates held modifiers and waits for a non-modifier key to complete the combo,
+/// or accepts a single modifier press for modifier-only (double-tap) hotkeys.
 class HotkeyRecorderView: NSTextField {
     /// Called when a new key combo is captured. (keyCode, modifiers)
     var onHotkeyRecorded: ((Int64, CGEventFlags) -> Void)?
 
     private var isRecording = false
+    private var globalMonitor: Any?
     private var localMonitor: Any?
+    private var currentModifiers: NSEvent.ModifierFlags = []
+    private var modifierTimer: Timer?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -19,11 +24,17 @@ class HotkeyRecorderView: NSTextField {
         setup()
     }
 
+    deinit {
+        stopRecording()
+    }
+
     private func setup() {
         isEditable = false
         isSelectable = false
         alignment = .center
-        font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        font = NSFont.monospacedSystemFont(ofSize: 15, weight: .medium)
+        isBezeled = true
+        bezelStyle = .roundedBezel
         placeholderString = "点击此处录制快捷键"
     }
 
@@ -37,9 +48,16 @@ class HotkeyRecorderView: NSTextField {
 
     private func startRecording() {
         isRecording = true
-        stringValue = "请按下快捷键..."
+        currentModifiers = []
+        stringValue = "请按下快捷键组合..."
         textColor = .systemOrange
 
+        // Global monitor captures events even if another app steals focus
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+            self?.handleRecordEvent(event)
+        }
+
+        // Local monitor captures events when this app is in focus
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
             self?.handleRecordEvent(event)
             return nil  // consume the event
@@ -49,8 +67,16 @@ class HotkeyRecorderView: NSTextField {
     private func stopRecording() {
         isRecording = false
         textColor = .labelColor
-        if let monitor = localMonitor {
-            NSEvent.removeMonitor(monitor)
+        currentModifiers = []
+        modifierTimer?.invalidate()
+        modifierTimer = nil
+
+        if let g = globalMonitor {
+            NSEvent.removeMonitor(g)
+            globalMonitor = nil
+        }
+        if let l = localMonitor {
+            NSEvent.removeMonitor(l)
             localMonitor = nil
         }
     }
@@ -64,33 +90,49 @@ class HotkeyRecorderView: NSTextField {
                 return
             }
 
+            // Non-modifier key pressed: capture the combo (current modifiers + this key)
+            modifierTimer?.invalidate()
+            modifierTimer = nil
+
             let keyCode = Int64(event.keyCode)
-            let modifiers = convertModifiers(event.modifierFlags)
-            onHotkeyRecorded?(keyCode, modifiers)
-            stringValue = HotkeyConfig(keyCode: keyCode, modifiers: modifiers, mode: .handsFree).displayString
+            let cgFlags = convertModifiers(currentModifiers.union(event.modifierFlags))
+            onHotkeyRecorded?(keyCode, cgFlags)
+            stringValue = HotkeyConfig(keyCode: keyCode, modifiers: cgFlags, mode: .handsFree).displayString
             stopRecording()
 
         } else if event.type == .flagsChanged {
-            // Modifier-only: detect a modifier press (for double-tap style)
-            let mods = event.modifierFlags
-            let cgFlags = convertModifiers(mods)
+            // Track which modifiers are currently held
+            let mods = event.modifierFlags.intersection([.control, .option, .shift, .command])
 
-            // Only accept if exactly one modifier is pressed
-            let modCount = [
-                mods.contains(.control),
-                mods.contains(.option),
-                mods.contains(.shift),
-                mods.contains(.command)
-            ].filter { $0 }.count
+            if !mods.isEmpty {
+                // Modifier pressed — accumulate and show live preview
+                currentModifiers = mods
+                stringValue = modifierDisplayString(mods) + "..."
 
-            if modCount == 1 {
-                // User pressed a single modifier — record as modifier-only hotkey
-                onHotkeyRecorded?(-1, cgFlags)
-                let config = HotkeyConfig(keyCode: -1, modifiers: cgFlags, mode: .handsFree)
-                stringValue = config.displayString
-                stopRecording()
+                // Start/reset a timer: if no key is pressed within 1s,
+                // accept as modifier-only hotkey (double-tap trigger)
+                modifierTimer?.invalidate()
+                modifierTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
+                    guard let self = self, self.isRecording else { return }
+                    let cgFlags = self.convertModifiers(self.currentModifiers)
+                    self.onHotkeyRecorded?(-1, cgFlags)
+                    let config = HotkeyConfig(keyCode: -1, modifiers: cgFlags, mode: .handsFree)
+                    self.stringValue = config.displayString
+                    self.stopRecording()
+                }
             }
+            // When all modifiers are released without pressing a key,
+            // keep waiting (don't reset) — user may re-press
         }
+    }
+
+    private func modifierDisplayString(_ flags: NSEvent.ModifierFlags) -> String {
+        var parts: [String] = []
+        if flags.contains(.control) { parts.append("⌃") }
+        if flags.contains(.option)  { parts.append("⌥") }
+        if flags.contains(.shift)   { parts.append("⇧") }
+        if flags.contains(.command) { parts.append("⌘") }
+        return parts.joined()
     }
 
     private func convertModifiers(_ nsFlags: NSEvent.ModifierFlags) -> CGEventFlags {
