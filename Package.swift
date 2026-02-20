@@ -17,6 +17,14 @@ let package = Package(
                 .linkedFramework("Carbon"),
                 .linkedFramework("Network"),
             ]
+        ),
+        .testTarget(
+            name: "VoiceInputTests",
+            dependencies: ["VoiceInput"],
+            path: "Tests",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ]
         )
     ]
 )
