@@ -275,7 +275,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // We need accessibility permissions for CGEvent tap
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         if !AXIsProcessTrustedWithOptions(options) {
-            print("[AppDelegate] ⚠️ Accessibility permission required. Please grant it in System Preferences.")
+            print("[AppDelegate] Accessibility permission required.")
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "需要辅助功能权限"
+                alert.informativeText = "VoiceInput 需要辅助功能权限来注册全局快捷键。\n请在 系统设置 → 隐私与安全性 → 辅助功能 中授予权限。"
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "确定")
+                alert.runModal()
+            }
         }
 
         let mask: CGEventMask = (1 << CGEventType.keyDown.rawValue)
@@ -310,7 +318,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             callback: callback,
             userInfo: refcon
         ) else {
-            print("[AppDelegate] ❌ Failed to create event tap. Grant accessibility permissions.")
+            print("[AppDelegate] Failed to create event tap.")
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "快捷键注册失败"
+                alert.informativeText = "无法创建全局快捷键。\n请确保已在 系统设置 → 隐私与安全性 → 辅助功能 中授予权限，然后重启应用。"
+                alert.alertStyle = .critical
+                alert.addButton(withTitle: "确定")
+                alert.runModal()
+            }
             return
         }
 
