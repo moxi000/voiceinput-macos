@@ -212,19 +212,28 @@ class HotkeyManager {
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         let flags = event.flags
 
-        // Check if the pressed key matches our hotkey
-        guard keyCode == config.keyCode, matchesModifiers(flags) else {
+        // For keyDown: require both keyCode AND modifiers to match
+        if type == .keyDown && keyCode == config.keyCode && matchesModifiers(flags) {
+            return handleKeyDown(event: event)
+        }
+
+        // For keyUp in hold-to-talk: only check keyCode (modifier may already be released)
+        if type == .keyUp && keyCode == config.keyCode && config.mode == .holdToTalk && isHolding {
+            return handleKeyUp(event: event)
+        }
+
+        // For flagsChanged in hold-to-talk: stop if modifier released while holding
+        if type == .flagsChanged && config.mode == .holdToTalk && isHolding {
+            if !matchesModifiers(flags) {
+                isHolding = false
+                DispatchQueue.main.async { [weak self] in
+                    self?.onRecordStop?()
+                }
+            }
             return Unmanaged.passUnretained(event)
         }
 
-        switch type {
-        case .keyDown:
-            return handleKeyDown(event: event)
-        case .keyUp:
-            return handleKeyUp(event: event)
-        default:
-            return Unmanaged.passUnretained(event)
-        }
+        return Unmanaged.passUnretained(event)
     }
 
     // MARK: - Key Handling
