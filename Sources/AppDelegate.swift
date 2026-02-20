@@ -400,6 +400,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         asr?.onError = { [weak self] (msg: String) in
+            self?.cleanupAfterError()
             self?.overlay.setState(.error(msg))
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 self?.overlay.hide()
@@ -430,6 +431,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         asr?.onError = { [weak self] (msg: String) in
+            self?.cleanupAfterError()
             self?.inlineInjector.deleteAll()
             self?.overlay.setState(.error(msg))
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -455,5 +457,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             overlay.updateText("正在识别...")
         }
         asr?.endStreaming()
+    }
+
+    /// Clean up recording and ASR state after an error to prevent
+    /// stale mic usage and data accumulation.
+    private func cleanupAfterError() {
+        if recorder.recording {
+            _ = recorder.stop()
+        }
+        recorder.onAudioChunk = nil
+        recorder.onAudioLevel = nil
+        asr?.cancel()
+        asr = nil
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "VoiceInput")
+        }
     }
 }
