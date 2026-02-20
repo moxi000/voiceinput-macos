@@ -312,7 +312,8 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
                 case .data(let data):
                     self.parseServerResponse(data)
                 case .string(let text):
-                    print("[VolcASR] Text: \(text)")
+                    let logText = HistoryLogger.enabled ? text : "<redacted>"
+                    print("[VolcASR] Text: \(logText)")
                 @unknown default: break
                 }
                 self.receiveResponses()
