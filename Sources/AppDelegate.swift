@@ -9,11 +9,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let recorder = AudioRecorder()
     private let inlineInjector = InlineTextInjector()
     private var asr: ASRService?
-    private var eventTap: CFMachPort?
-    private var previousApp: NSRunningApplication?  // app that was focused before recording
+    private var hotkeyManager: HotkeyManager!
+    private var previousApp: NSRunningApplication?
     private var modeMenuItem: NSMenuItem!
     private var providerMenuItem: NSMenuItem!
     private var privacyMenuItem: NSMenuItem!
+    private var hotkeyModeMenuItem: NSMenuItem!
+    private var hotkeyMenuItem: NSMenuItem!
 
     private var isInlineMode: Bool {
         get { UserDefaults.standard.bool(forKey: "inline_mode") }
@@ -66,8 +68,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         migrateCredentialsToKeychain()
         applyPrivacyMode()
         setupMenuBar()
-        setupGlobalHotkey()
-        print("[AppDelegate] VoiceInput ready. Press Option+Z to start/stop recording.")
+        setupHotkeyManager()
+        print("[AppDelegate] VoiceInput ready.")
 
         if asrProvider != "local" && (appId.isEmpty || token.isEmpty) {
             print("[AppDelegate] ⚠️ API credentials not configured. Use the menu bar to set them.")
@@ -127,6 +129,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         privacyMenuItem.target = self
         privacyMenuItem.state = privacyMode ? .on : .off
         menu.addItem(privacyMenuItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let hotkeyConfig = HotkeyConfig.load()
+        hotkeyModeMenuItem = NSMenuItem(
+            title: hotkeyConfig.mode == .holdToTalk ? "快捷键模式: 按住说话" : "快捷键模式: 免提",
+            action: #selector(toggleHotkeyMode), keyEquivalent: "")
+        hotkeyModeMenuItem.target = self
+        menu.addItem(hotkeyModeMenuItem)
+
+        hotkeyMenuItem = NSMenuItem(
+            title: "设置快捷键 (当前: \(hotkeyConfig.displayString))...",
+            action: #selector(showHotkeyDialog), keyEquivalent: "")
+        hotkeyMenuItem.target = self
+        menu.addItem(hotkeyMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -269,81 +286,56 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApplication.shared.terminate(nil)
     }
 
-    // MARK: - Global Hotkey (Option+Z via CGEvent tap)
+    // MARK: - Hotkey Manager
 
-    private func setupGlobalHotkey() {
-        // We need accessibility permissions for CGEvent tap
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-        if !AXIsProcessTrustedWithOptions(options) {
-            print("[AppDelegate] Accessibility permission required.")
-            DispatchQueue.main.async {
-                let alert = NSAlert()
-                alert.messageText = "需要辅助功能权限"
-                alert.informativeText = "VoiceInput 需要辅助功能权限来注册全局快捷键。\n请在 系统设置 → 隐私与安全性 → 辅助功能 中授予权限。"
-                alert.alertStyle = .warning
-                alert.addButton(withTitle: "确定")
-                alert.runModal()
-            }
+    private func setupHotkeyManager() {
+        hotkeyManager = HotkeyManager(config: .load())
+        hotkeyManager.onRecordStart = { [weak self] in
+            guard let self = self, !self.recorder.recording else { return }
+            self.startRecording()
         }
-
-        let mask: CGEventMask = (1 << CGEventType.keyDown.rawValue)
-            | (1 << CGEventType.otherMouseDown.rawValue)
-        let callback: CGEventTapCallBack = { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
-            let delegate = Unmanaged<AppDelegate>.fromOpaque(refcon!).takeUnretainedValue()
-
-            // Middle mouse button (button 2)
-            if type == .otherMouseDown && event.getIntegerValueField(.mouseEventButtonNumber) == 2 {
-                DispatchQueue.main.async { delegate.toggleRecording() }
-                return nil
-            }
-
-            // Option+Z: keyCode 6 = Z
-            if type == .keyDown {
-                let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-                if keyCode == 6 && event.flags.contains(.maskAlternate) {
-                    DispatchQueue.main.async { delegate.toggleRecording() }
-                    return nil
-                }
-            }
-
-            return Unmanaged.passUnretained(event)
+        hotkeyManager.onRecordStop = { [weak self] in
+            guard let self = self, self.recorder.recording else { return }
+            self.stopRecording()
         }
-
-        let refcon = Unmanaged.passUnretained(self).toOpaque()
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: mask,
-            callback: callback,
-            userInfo: refcon
-        ) else {
-            print("[AppDelegate] Failed to create event tap.")
-            DispatchQueue.main.async {
-                let alert = NSAlert()
-                alert.messageText = "快捷键注册失败"
-                alert.informativeText = "无法创建全局快捷键。\n请确保已在 系统设置 → 隐私与安全性 → 辅助功能 中授予权限，然后重启应用。"
-                alert.alertStyle = .critical
-                alert.addButton(withTitle: "确定")
-                alert.runModal()
-            }
-            return
-        }
-
-        eventTap = tap
-        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
-        print("[AppDelegate] Global hotkey Option+Z registered")
+        _ = hotkeyManager.install()
     }
 
-    // MARK: - Recording Toggle
+    @objc private func toggleHotkeyMode() {
+        var config = hotkeyManager.config
+        config.mode = (config.mode == .holdToTalk) ? .handsFree : .holdToTalk
+        hotkeyManager.updateConfig(config)
+        hotkeyModeMenuItem.title = config.mode == .holdToTalk ? "快捷键模式: 按住说话" : "快捷键模式: 免提"
+    }
 
-    private func toggleRecording() {
-        if recorder.recording {
-            stopRecording()
-        } else {
-            startRecording()
+    @objc private func showHotkeyDialog() {
+        let alert = NSAlert()
+        alert.messageText = "设置快捷键"
+        alert.informativeText = "点击下方输入框，然后按下想要的快捷键组合。\n按 Esc 取消。单独按下修饰键可设为双击修饰键触发。"
+
+        let recorder = HotkeyRecorderView(frame: NSRect(x: 0, y: 0, width: 250, height: 28))
+        recorder.display(hotkeyManager.config)
+
+        var pendingKeyCode: Int64?
+        var pendingModifiers: CGEventFlags?
+
+        recorder.onHotkeyRecorded = { keyCode, modifiers in
+            pendingKeyCode = keyCode
+            pendingModifiers = modifiers
+        }
+
+        alert.accessoryView = recorder
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "取消")
+
+        if alert.runModal() == .alertFirstButtonReturn,
+           let kc = pendingKeyCode, let mods = pendingModifiers {
+            var config = hotkeyManager.config
+            config.keyCode = kc
+            config.modifiers = mods
+            hotkeyManager.updateConfig(config)
+            hotkeyMenuItem.title = "设置快捷键 (当前: \(config.displayString))..."
+            print("[AppDelegate] Hotkey changed to: \(config.displayString)")
         }
     }
 
@@ -516,6 +508,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "VoiceInput")
         }
+        hotkeyManager?.resetHoldState()
     }
 
     /// One-time migration: move credentials from UserDefaults to Keychain.
