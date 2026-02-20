@@ -14,6 +14,9 @@ struct HotkeyConfig: Equatable {
 
     /// Human-readable label, e.g. "⌥Z" or "Double ⌥"
     var displayString: String {
+        // Special case: middle mouse button
+        if keyCode == -2 { return "鼠标中键" }
+
         var parts: [String] = []
         if modifiers.contains(.maskControl)   { parts.append("⌃") }
         if modifiers.contains(.maskAlternate)  { parts.append("⌥") }

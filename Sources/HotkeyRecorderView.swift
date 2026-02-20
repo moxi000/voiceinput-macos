@@ -53,12 +53,12 @@ class HotkeyRecorderView: NSTextField {
         textColor = .systemOrange
 
         // Global monitor captures events even if another app steals focus
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged, .otherMouseDown]) { [weak self] event in
             self?.handleRecordEvent(event)
         }
 
         // Local monitor captures events when this app is in focus
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged, .otherMouseDown]) { [weak self] event in
             self?.handleRecordEvent(event)
             return nil  // consume the event
         }
@@ -82,6 +82,17 @@ class HotkeyRecorderView: NSTextField {
     }
 
     private func handleRecordEvent(_ event: NSEvent) {
+        // Mouse button
+        if event.type == .otherMouseDown && event.buttonNumber == 2 {
+            modifierTimer?.invalidate()
+            modifierTimer = nil
+            // Use keyCode=-2 as convention for middle mouse button
+            onHotkeyRecorded?(-2, CGEventFlags())
+            stringValue = "鼠标中键"
+            stopRecording()
+            return
+        }
+
         if event.type == .keyDown {
             // Escape cancels recording
             if event.keyCode == 53 {
