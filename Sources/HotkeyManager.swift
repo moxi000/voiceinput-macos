@@ -171,6 +171,16 @@ class HotkeyManager {
     private static let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
         guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
         let manager = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
+
+        // Re-enable tap if macOS disabled it (happens on timeout)
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let tap = manager.eventTap {
+                CGEvent.tapEnable(tap: tap, enable: true)
+                print("[HotkeyManager] Re-enabled event tap after disable")
+            }
+            return Unmanaged.passUnretained(event)
+        }
+
         return manager.handleEvent(type: type, event: event)
     }
 
@@ -183,6 +193,7 @@ class HotkeyManager {
                     self.isHolding = false
                     self.onRecordStop?()
                 } else {
+                    self.isHolding = true
                     self.onRecordStart?()
                 }
             }
