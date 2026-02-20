@@ -300,7 +300,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self = self, self.recorder.recording else { return }
             self.stopRecording()
         }
-        _ = hotkeyManager.install()
+        if !hotkeyManager.install() {
+            holdHotkeyMenuItem.title = "按住说话快捷键: ⚠️ 需授权"
+            freeHotkeyMenuItem.title = "免提快捷键: ⚠️ 需授权"
+        }
     }
 
     @objc private func showHoldHotkeyDialog() {
