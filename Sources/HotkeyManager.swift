@@ -102,8 +102,8 @@ class HotkeyManager {
     private(set) var handsFreeConfig: HotkeyConfig?
 
     private var eventTap: CFMachPort?
-    private var isHolding = false
-    private var activeMode: HotkeyMode?
+    private(set) var isHolding = false
+    private(set) var activeMode: HotkeyMode?
     var suspended = false  // suppress all hotkey handling (e.g. during config dialog)  // which mode triggered current recording
 
     // Double-modifier detection (for modifier-only hotkeys)
@@ -247,7 +247,7 @@ class HotkeyManager {
             }
             // Modifier released during hold — stop if it was in hold config
             if type == .flagsChanged, let htc = holdToTalkConfig {
-                if htc.keyCode < 0 || !matchesMods(flags, htc.modifiers) {
+                if htc.keyCode < 0 || !Self.matchesMods(flags, htc.modifiers) {
                     isHolding = false
                     activeMode = nil
                     DispatchQueue.main.async { [weak self] in self?.onRecordStop?() }
@@ -271,7 +271,7 @@ class HotkeyManager {
 
             // Check hold-to-talk
             if let htc = holdToTalkConfig, htc.keyCode >= 0,
-               keyCode == htc.keyCode, matchesMods(flags, htc.modifiers) {
+               keyCode == htc.keyCode, Self.matchesMods(flags, htc.modifiers) {
                 if !isHolding {
                     isHolding = true
                     activeMode = .holdToTalk
@@ -282,7 +282,7 @@ class HotkeyManager {
 
             // Check hands-free
             if let hfc = handsFreeConfig, hfc.keyCode >= 0,
-               keyCode == hfc.keyCode, matchesMods(flags, hfc.modifiers) {
+               keyCode == hfc.keyCode, Self.matchesMods(flags, hfc.modifiers) {
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self else { return }
                     if self.isHolding {
@@ -351,7 +351,7 @@ class HotkeyManager {
 
     // MARK: - Helpers
 
-    private func matchesMods(_ flags: CGEventFlags, _ required: CGEventFlags) -> Bool {
+    static func matchesMods(_ flags: CGEventFlags, _ required: CGEventFlags) -> Bool {
         let relevant: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
         return flags.intersection(relevant) == required.intersection(relevant)
     }
