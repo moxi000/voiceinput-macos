@@ -33,10 +33,11 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
     private let compressGzip: UInt8 = 0b0001
 
     // MARK: - State
+    private let stateQueue = DispatchQueue(label: "volcengine.asr.state")
     private var webSocket: URLSessionWebSocketTask?
     private var urlSession: URLSession?
-    private var isConnected = false
-    private var pendingChunks: [Data] = []
+    private var _isConnected = false
+    private var _pendingChunks: [Data] = []
     private var lastReceivedText: String = ""
     private var didEmitFinal = false
     private var confirmedText: String = ""  // accumulated definite utterances
@@ -66,8 +67,10 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
 
     /// Start a streaming session: connect WebSocket and send config.
     func startStreaming() {
-        isConnected = false
-        pendingChunks = []
+        stateQueue.sync {
+            _isConnected = false
+            _pendingChunks = []
+        }
         lastReceivedText = ""
         didEmitFinal = false
         confirmedText = ""
@@ -108,31 +111,40 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
     func sendAudioChunk(_ pcmData: Data) {
         guard !pcmData.isEmpty else { return }
 
-        if !isConnected {
-            // Buffer chunks until WebSocket is ready
-            pendingChunks.append(pcmData)
-            return
+        let connected = stateQueue.sync {
+            if !_isConnected {
+                _pendingChunks.append(pcmData)
+                return false
+            }
+            return true
         }
 
-        sendAudioPacket(pcmData, isLast: false)
+        if connected {
+            sendAudioPacket(pcmData, isLast: false)
+        }
     }
 
     /// End the streaming session: send last (empty) packet to signal end of audio.
     func endStreaming() {
-        guard isConnected else {
-            // Not yet connected — mark that we should end after flushing
-            pendingChunks.append(Data())  // empty = sentinel for "last"
-            return
+        let connected = stateQueue.sync {
+            if !_isConnected {
+                _pendingChunks.append(Data())  // empty = sentinel for "last"
+                return false
+            }
+            return true
         }
 
-        // Send an empty last packet with flagLast
-        sendAudioPacket(Data(), isLast: true)
-        print("[VolcASR] Sent end-of-stream marker")
+        if connected {
+            sendAudioPacket(Data(), isLast: true)
+            print("[VolcASR] Sent end-of-stream marker")
+        }
     }
 
     func cancel() {
-        isConnected = false
-        pendingChunks = []
+        stateQueue.sync {
+            _isConnected = false
+            _pendingChunks = []
+        }
         webSocket?.cancel(with: .goingAway, reason: nil)
         webSocket = nil
         urlSession?.invalidateAndCancel()
@@ -144,7 +156,7 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
                     didOpenWithProtocol protocol: String?) {
         print("[VolcASR] ✅ WebSocket connected")
-        isConnected = true
+        stateQueue.sync { _isConnected = true }
 
         // 1) Send config
         sendFullClientRequest()
@@ -158,7 +170,7 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
 
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
                     didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        isConnected = false
+        stateQueue.sync { _isConnected = false }
         let reasonStr = reason.flatMap { String(data: $0, encoding: .utf8) } ?? "none"
         print("[VolcASR] WebSocket closed: code=\(closeCode.rawValue), reason=\(reasonStr)")
 
@@ -173,7 +185,7 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
 
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     didCompleteWithError error: Error?) {
-        isConnected = false
+        stateQueue.sync { _isConnected = false }
         if let error = error {
             print("[VolcASR] ❌ Connection error: \(error.localizedDescription)")
             if let httpResp = task.response as? HTTPURLResponse {
@@ -186,8 +198,11 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
     // MARK: - Internal: Send
 
     private func flushPendingChunks() {
-        let chunks = pendingChunks
-        pendingChunks = []
+        let chunks = stateQueue.sync {
+            let c = _pendingChunks
+            _pendingChunks = []
+            return c
+        }
 
         for chunk in chunks {
             if chunk.isEmpty {
