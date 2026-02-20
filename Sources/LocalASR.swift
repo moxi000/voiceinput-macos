@@ -8,10 +8,11 @@ class LocalASR: ASRService {
     private let port: UInt16
 
     private var connection: NWConnection?
-    private var isConnected = false
-    private var pendingChunks: [Data] = []
+    private let stateQueue = DispatchQueue(label: "local.asr.state")
+    private var _isConnected = false
+    private var _pendingChunks: [Data] = []
     private var responseBuffer = Data()
-    private var didEmitFinal = false
+    private var _didEmitFinal = false
 
     var onPartialResult: ((String) -> Void)?
     var onFinalResult: ((String) -> Void)?
@@ -25,10 +26,12 @@ class LocalASR: ASRService {
     // MARK: - ASRService
 
     func startStreaming() {
-        isConnected = false
-        pendingChunks = []
+        stateQueue.sync {
+            _isConnected = false
+            _pendingChunks = []
+            _didEmitFinal = false
+        }
         responseBuffer = Data()
-        didEmitFinal = false
 
         let nwHost = NWEndpoint.Host(host)
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
@@ -40,7 +43,7 @@ class LocalASR: ASRService {
         connection?.stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
-                self?.isConnected = true
+                self?.stateQueue.sync { self?._isConnected = true }
                 print("[LocalASR] Connected to \(self?.host ?? ""):\(self?.port ?? 0)")
                 self?.sendHTTPHandshake()
                 self?.readResponseHeaders()
@@ -61,27 +64,39 @@ class LocalASR: ASRService {
     func sendAudioChunk(_ pcmData: Data) {
         guard !pcmData.isEmpty else { return }
 
-        if !isConnected {
-            pendingChunks.append(pcmData)
-            return
+        let connected = stateQueue.sync {
+            if !_isConnected {
+                _pendingChunks.append(pcmData)
+                return false
+            }
+            return true
         }
 
-        sendAudioFrame(pcmData)
+        if connected {
+            sendAudioFrame(pcmData)
+        }
     }
 
     func endStreaming() {
-        guard isConnected else {
-            pendingChunks.append(Data())  // sentinel for end-of-stream
-            return
+        let connected = stateQueue.sync {
+            if !_isConnected {
+                _pendingChunks.append(Data())  // sentinel for end-of-stream
+                return false
+            }
+            return true
         }
 
-        sendEndFrame()
-        print("[LocalASR] Sent end-of-stream marker")
+        if connected {
+            sendEndFrame()
+            print("[LocalASR] Sent end-of-stream marker")
+        }
     }
 
     func cancel() {
-        isConnected = false
-        pendingChunks = []
+        stateQueue.sync {
+            _isConnected = false
+            _pendingChunks = []
+        }
         connection?.cancel()
         connection = nil
     }
@@ -163,7 +178,8 @@ class LocalASR: ASRService {
             guard let self = self else { return }
 
             if let error = error {
-                if !self.didEmitFinal {
+                let emitFinal = self.stateQueue.sync { self._didEmitFinal }
+                if !emitFinal {
                     self.emitError("SSE读取错误: \(error.localizedDescription)")
                 }
                 return
@@ -175,14 +191,17 @@ class LocalASR: ASRService {
             }
 
             if isComplete {
-                if !self.didEmitFinal {
-                    self.didEmitFinal = true
-                    print("[LocalASR] Connection completed without explicit done signal")
+                self.stateQueue.sync {
+                    if !self._didEmitFinal {
+                        self._didEmitFinal = true
+                        print("[LocalASR] Connection completed without explicit done signal")
+                    }
                 }
                 return
             }
 
-            if !self.didEmitFinal {
+            let emitFinal = self.stateQueue.sync { self._didEmitFinal }
+            if !emitFinal {
                 self.readSSEData()
             }
         }
@@ -230,8 +249,12 @@ class LocalASR: ASRService {
         }
 
         if isDone {
-            guard !didEmitFinal else { return }
-            didEmitFinal = true
+            let alreadyEmitted = stateQueue.sync {
+                if _didEmitFinal { return true }
+                _didEmitFinal = true
+                return false
+            }
+            guard !alreadyEmitted else { return }
             print("[LocalASR] Final: \"\(text)\"")
             DispatchQueue.main.async { self.onFinalResult?(text) }
             connection?.cancel()
@@ -244,8 +267,11 @@ class LocalASR: ASRService {
     // MARK: - Send Audio Frames
 
     private func flushPendingChunks() {
-        let chunks = pendingChunks
-        pendingChunks = []
+        let chunks = stateQueue.sync {
+            let c = _pendingChunks
+            _pendingChunks = []
+            return c
+        }
 
         for chunk in chunks {
             if chunk.isEmpty {
