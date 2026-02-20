@@ -380,6 +380,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             guard !appId.isEmpty, !token.isEmpty else {
                 print("[AppDelegate] Credentials not set!")
+                hotkeyManager.resetState()
                 showApiKeyDialog()
                 return
             }
@@ -418,6 +419,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             print("[AppDelegate] Failed to start recording: \(error)")
             asr?.cancel()
+            hotkeyManager.resetState()
             return
         }
 
