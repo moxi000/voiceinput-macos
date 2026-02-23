@@ -16,6 +16,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var privacyMenuItem: NSMenuItem!
     private var holdHotkeyMenuItem: NSMenuItem!
     private var freeHotkeyMenuItem: NSMenuItem!
+    private var llmMenuItem: NSMenuItem!
 
     private var isInlineMode: Bool {
         get { UserDefaults.standard.bool(forKey: "inline_mode") }
@@ -112,6 +113,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
+        let llmConfigItem = NSMenuItem(title: "设置 LLM 后处理...", action: #selector(showLLMSettingsDialog), keyEquivalent: "")
+        llmConfigItem.target = self
+        menu.addItem(llmConfigItem)
+
+        llmMenuItem = NSMenuItem(title: "LLM 后处理", action: #selector(toggleLLMPost), keyEquivalent: "")
+        llmMenuItem.target = self
+        llmMenuItem.state = LLMPostProcessor.enabled ? .on : .off
+        menu.addItem(llmMenuItem)
+
+        let llmPromptItem = NSMenuItem(title: "编辑 LLM 提示词...", action: #selector(showLLMPromptEditor), keyEquivalent: "")
+        llmPromptItem.target = self
+        menu.addItem(llmPromptItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let replacementsItem = NSMenuItem(title: "编辑词汇替换表...", action: #selector(openReplacementsFile), keyEquivalent: "")
         replacementsItem.target = self
         menu.addItem(replacementsItem)
@@ -165,17 +181,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         stackView.orientation = .vertical
         stackView.spacing = 8
 
-        let appIdField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        let appIdField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
         appIdField.placeholderString = "App ID (如: 5956285917)"
         appIdField.stringValue = appId
         stackView.addArrangedSubview(appIdField)
 
-        let tokenField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        let tokenField = EditableSecureTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
         tokenField.placeholderString = "Access Token"
         tokenField.stringValue = token
         stackView.addArrangedSubview(tokenField)
 
-        let clusterField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        let clusterField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
         clusterField.placeholderString = "Resource ID (如: volc.seedasr.sauc.duration)"
         clusterField.stringValue = cluster
         stackView.addArrangedSubview(clusterField)
@@ -252,6 +268,161 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HistoryLogger.enabled = !privacyMode
     }
 
+    @objc private func showLLMSettingsDialog() {
+        let alert = NSAlert()
+        alert.messageText = "LLM 后处理设置"
+        alert.informativeText = "配置 LLM API 以优化语音识别结果（标点、断句、去结巴等）"
+
+        let stackView = NSStackView(frame: NSRect(x: 0, y: 0, width: 350, height: 92))
+        stackView.orientation = .vertical
+        stackView.spacing = 8
+
+        let baseURLField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 350, height: 24))
+        baseURLField.placeholderString = "Base URL (如: https://api.openai.com/v1)"
+        baseURLField.stringValue = LLMPostProcessor.baseURL
+        stackView.addArrangedSubview(baseURLField)
+
+        let modelField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 350, height: 24))
+        modelField.placeholderString = "模型名称 (如: gpt-4o-mini)"
+        modelField.stringValue = LLMPostProcessor.model
+        stackView.addArrangedSubview(modelField)
+
+        let keyField = EditableSecureTextField(frame: NSRect(x: 0, y: 0, width: 350, height: 24))
+        keyField.placeholderString = "API Key"
+        keyField.stringValue = LLMPostProcessor.apiKey
+        stackView.addArrangedSubview(keyField)
+
+        alert.accessoryView = stackView
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "测试")
+        alert.addButton(withTitle: "取消")
+
+        // 循环处理：点击「测试」后显示结果，对话框保持打开
+        var shouldContinue = true
+        while shouldContinue {
+            let result = alert.runModal()
+            switch result {
+            case .alertFirstButtonReturn:
+                // 保存
+                LLMPostProcessor.baseURL = baseURLField.stringValue
+                LLMPostProcessor.model = modelField.stringValue
+                LLMPostProcessor.apiKey = keyField.stringValue
+                print("[AppDelegate] LLM 设置已保存 (model=\(LLMPostProcessor.model))")
+                shouldContinue = false
+
+            case .alertSecondButtonReturn:
+                // 测试连接
+                let testBase = baseURLField.stringValue
+                let testModel = modelField.stringValue
+                let testKey = keyField.stringValue
+
+                guard !testBase.isEmpty, !testModel.isEmpty, !testKey.isEmpty else {
+                    let warn = NSAlert()
+                    warn.messageText = "❌ 配置不完整"
+                    warn.informativeText = "请填写 Base URL、模型名称和 API Key"
+                    warn.runModal()
+                    continue
+                }
+
+                // 使用信号量等待异步结果
+                let semaphore = DispatchSemaphore(value: 0)
+                var testSuccess = false
+                var testMessage = ""
+                LLMPostProcessor.testConnection(baseURL: testBase, model: testModel, apiKey: testKey) { success, message in
+                    testSuccess = success
+                    testMessage = message
+                    semaphore.signal()
+                }
+
+                // 在后台等待，避免阻塞主线程 UI
+                DispatchQueue.global().async {
+                    semaphore.wait()
+                    DispatchQueue.main.async {
+                        let resultAlert = NSAlert()
+                        if testSuccess {
+                            resultAlert.messageText = "✅ 连接成功"
+                            resultAlert.informativeText = "模型回复: \(testMessage)"
+                        } else {
+                            resultAlert.messageText = "❌ 连接失败"
+                            resultAlert.informativeText = testMessage
+                        }
+                        resultAlert.runModal()
+                    }
+                }
+                // 继续循环，回到主对话框
+                continue
+
+            default:
+                // 取消
+                shouldContinue = false
+            }
+        }
+    }
+
+    @objc private func toggleLLMPost() {
+        LLMPostProcessor.enabled.toggle()
+        llmMenuItem.state = LLMPostProcessor.enabled ? .on : .off
+        print("[AppDelegate] LLM 后处理: \(LLMPostProcessor.enabled ? "ON" : "OFF")")
+    }
+
+    @objc private func showLLMPromptEditor() {
+        let alert = NSAlert()
+        alert.messageText = "编辑 LLM 提示词"
+        alert.informativeText = "自定义系统提示词，用于指导 LLM 如何优化语音识别结果"
+
+        // 使用 NSTextView + NSScrollView 实现多行编辑
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 450, height: 250))
+        scrollView.hasVerticalScroller = true
+        scrollView.borderType = .bezelBorder
+
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 450, height: 250))
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.allowsUndo = true
+        textView.font = NSFont.systemFont(ofSize: 13)
+        textView.isRichText = false
+        textView.string = LLMPostProcessor.systemPrompt
+        textView.autoresizingMask = [.width, .height]
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.textContainer?.widthTracksTextView = true
+
+        scrollView.documentView = textView
+        alert.accessoryView = scrollView
+
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "重置为默认")
+        alert.addButton(withTitle: "取消")
+
+        var shouldContinue = true
+        while shouldContinue {
+            let result = alert.runModal()
+            switch result {
+            case .alertFirstButtonReturn:
+                // 保存
+                let newPrompt = textView.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                if newPrompt.isEmpty || newPrompt == LLMPostProcessor.defaultSystemPrompt {
+                    LLMPostProcessor.resetSystemPrompt()
+                    print("[AppDelegate] LLM 提示词已重置为默认")
+                } else {
+                    LLMPostProcessor.systemPrompt = newPrompt
+                    print("[AppDelegate] LLM 提示词已保存")
+                }
+                shouldContinue = false
+
+            case .alertSecondButtonReturn:
+                // 重置为默认
+                textView.string = LLMPostProcessor.defaultSystemPrompt
+                // 继续循环，保持对话框打开
+                continue
+
+            default:
+                // 取消
+                shouldContinue = false
+            }
+        }
+    }
+
     @objc private func showLocalASRDialog() {
         let alert = NSAlert()
         alert.messageText = "本地识别服务设置"
@@ -261,12 +432,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         stackView.orientation = .vertical
         stackView.spacing = 8
 
-        let hostField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        let hostField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
         hostField.placeholderString = "Host (如: 127.0.0.1)"
         hostField.stringValue = localASRHost
         stackView.addArrangedSubview(hostField)
 
-        let portField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        let portField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
         portField.placeholderString = "Port (如: 8000)"
         portField.stringValue = String(localASRPort)
         stackView.addArrangedSubview(portField)
@@ -445,21 +616,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         asr?.onFinalResult = { [weak self] (text: String) in
-            let processedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
+            let replacedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
 
-            if !processedText.isEmpty {
-                HistoryLogger.log(processedText)
+            // LLM 后处理（异步），完成后再粘贴
+            let finalize = { (processedText: String) in
+                if !processedText.isEmpty {
+                    HistoryLogger.log(processedText)
+                }
+
+                self?.overlay.setState(.done)
+                self?.overlay.updateText(processedText.isEmpty ? "无输入" : processedText)
+
+                let targetApp = self?.previousApp
+                if !processedText.isEmpty {
+                    TextInjector.paste(processedText, targetApp: targetApp)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    self?.overlay.hide()
+                }
             }
 
-            self?.overlay.setState(.done)
-            self?.overlay.updateText(processedText.isEmpty ? "无输入" : processedText)
-
-            let targetApp = self?.previousApp
-            if !processedText.isEmpty {
-                TextInjector.paste(processedText, targetApp: targetApp)
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                self?.overlay.hide()
+            if LLMPostProcessor.enabled && LLMPostProcessor.isConfigured && !replacedText.isEmpty {
+                self?.overlay.updateText("正在优化文本...")
+                LLMPostProcessor.process(replacedText) { result in
+                    finalize(result)
+                }
+            } else {
+                finalize(replacedText)
             }
         }
 
@@ -478,19 +661,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         asr?.onFinalResult = { [weak self] (text: String) in
-            let processedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
+            let replacedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
 
-            if !processedText.isEmpty {
-                self?.inlineInjector.finalize(with: processedText)
-                HistoryLogger.log(processedText)
-            } else {
-                // No recognized text — clean up any partial text left in the field
-                self?.inlineInjector.deleteAll()
+            // LLM 后处理（异步），完成后再注入
+            let finalize = { (processedText: String) in
+                if !processedText.isEmpty {
+                    self?.inlineInjector.finalize(with: processedText)
+                    HistoryLogger.log(processedText)
+                } else {
+                    // 无识别文本 — 清理输入框中残留的部分文本
+                    self?.inlineInjector.deleteAll()
+                }
+
+                self?.overlay.setState(.done)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    self?.overlay.hide()
+                }
             }
 
-            self?.overlay.setState(.done)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                self?.overlay.hide()
+            if LLMPostProcessor.enabled && LLMPostProcessor.isConfigured && !replacedText.isEmpty {
+                LLMPostProcessor.process(replacedText) { result in
+                    finalize(result)
+                }
+            } else {
+                finalize(replacedText)
             }
         }
 
