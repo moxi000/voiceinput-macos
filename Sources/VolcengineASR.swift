@@ -41,6 +41,8 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
     private var lastReceivedText: String = ""
     private var didEmitFinal = false
     private var confirmedText: String = ""  // accumulated definite utterances
+    private var seenDefiniteUtteranceIDs: Set<String> = []
+    private var seenDefiniteTextsWithoutID: Set<String> = []
 
     /// Called with partial transcription text (on main thread)
     var onPartialResult: ((String) -> Void)?
@@ -74,6 +76,8 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
         lastReceivedText = ""
         didEmitFinal = false
         confirmedText = ""
+        seenDefiniteUtteranceIDs = []
+        seenDefiniteTextsWithoutID = []
 
         var components = URLComponents(string: endpoint)!
         components.queryItems = [
@@ -344,14 +348,16 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
 
         // Error
         if msgType == msgServerError {
-            guard data.count >= 12 else {
+            guard
+                let errorCode = readUInt32BE(data, at: 4),
+                let errorSizeRaw = readUInt32BE(data, at: 8)
+            else {
                 emitError("服务器错误 (数据不完整)")
                 return
             }
-            let errorCode = data[4..<8].withUnsafeBytes { UInt32(bigEndian: $0.load(as: UInt32.self)) }
-            let errorSize = Int(data[8..<12].withUnsafeBytes { UInt32(bigEndian: $0.load(as: UInt32.self)) })
+            let errorSize = Int(errorSizeRaw)
             let errorMsg: String
-            if data.count >= 12 + errorSize {
+            if errorSize <= data.count - 12 {
                 errorMsg = String(data: data[12..<(12 + errorSize)], encoding: .utf8) ?? "Unknown"
             } else {
                 errorMsg = "Unknown"
@@ -368,21 +374,19 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
 
         var sequence: Int32 = 0
         if (flags & 0b0001) != 0 {
-            guard data.count >= offset + 4 else { return }
-            sequence = data[offset..<(offset+4)].withUnsafeBytes { Int32(bigEndian: $0.load(as: Int32.self)) }
+            guard let seq = readInt32BE(data, at: offset) else { return }
+            sequence = seq
             offset += 4
         }
 
         let isLast = (flags & 0b0010) != 0
         if flags == flagNegSeq { sequence = -abs(sequence) }
 
-        guard data.count >= offset + 4 else { return }
-        let payloadSize = Int(data[offset..<(offset+4)].withUnsafeBytes {
-            UInt32(bigEndian: $0.load(as: UInt32.self))
-        })
+        guard let payloadSizeRaw = readUInt32BE(data, at: offset) else { return }
+        let payloadSize = Int(payloadSizeRaw)
         offset += 4
 
-        guard data.count >= offset + payloadSize else { return }
+        guard payloadSize <= data.count - offset else { return }
         let payload = data[offset..<(offset + payloadSize)]
 
         let jsonData: Data
@@ -407,7 +411,7 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
                 if u["definite"] as? Bool == true {
                     hasDefinite = true
                     let uText = u["text"] as? String ?? ""
-                    if !uText.isEmpty {
+                    if !uText.isEmpty && shouldAppendDefiniteUtterance(u, text: uText) {
                         confirmedText += uText
                     }
                 }
@@ -435,6 +439,72 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
             print("[VolcASR] \(hasDefinite ? "confirmed" : "partial") \(logText2)")
             DispatchQueue.main.async { self.onPartialResult?(fullText) }
         }
+    }
+
+    private func readUInt32BE(_ data: Data, at offset: Int) -> UInt32? {
+        guard offset >= 0, data.count - offset >= 4 else { return nil }
+        return
+            (UInt32(data[offset]) << 24) |
+            (UInt32(data[offset + 1]) << 16) |
+            (UInt32(data[offset + 2]) << 8) |
+            UInt32(data[offset + 3])
+    }
+
+    private func readInt32BE(_ data: Data, at offset: Int) -> Int32? {
+        guard let value = readUInt32BE(data, at: offset) else { return nil }
+        return Int32(bitPattern: value)
+    }
+
+    private func shouldAppendDefiniteUtterance(_ utterance: [String: Any], text: String) -> Bool {
+        if let utteranceID = utteranceIdentifier(from: utterance) {
+            if seenDefiniteUtteranceIDs.contains(utteranceID) {
+                return false
+            }
+            seenDefiniteUtteranceIDs.insert(utteranceID)
+            return true
+        }
+
+        if seenDefiniteTextsWithoutID.contains(text) {
+            return false
+        }
+        seenDefiniteTextsWithoutID.insert(text)
+        return true
+    }
+
+    private func utteranceIdentifier(from utterance: [String: Any]) -> String? {
+        let keys = ["id", "utterance_id", "utteranceId", "uid"]
+        for key in keys {
+            guard let value = utterance[key] else { continue }
+            switch value {
+            case let stringValue as String where !stringValue.isEmpty:
+                return stringValue
+            case let intValue as Int:
+                return String(intValue)
+            case let int8Value as Int8:
+                return String(int8Value)
+            case let int16Value as Int16:
+                return String(int16Value)
+            case let int32Value as Int32:
+                return String(int32Value)
+            case let int64Value as Int64:
+                return String(int64Value)
+            case let uintValue as UInt:
+                return String(uintValue)
+            case let uint8Value as UInt8:
+                return String(uint8Value)
+            case let uint16Value as UInt16:
+                return String(uint16Value)
+            case let uint32Value as UInt32:
+                return String(uint32Value)
+            case let uint64Value as UInt64:
+                return String(uint64Value)
+            case let numberValue as NSNumber:
+                return numberValue.stringValue
+            default:
+                continue
+            }
+        }
+        return nil
     }
 
     // MARK: - Build Client Message
@@ -532,3 +602,19 @@ class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
         DispatchQueue.main.async { self.onError?(msg) }
     }
 }
+
+#if DEBUG
+extension VolcengineASR {
+    func _test_parseServerResponse(_ data: Data) {
+        parseServerResponse(data)
+    }
+
+    var _test_lastReceivedText: String {
+        lastReceivedText
+    }
+
+    var _test_confirmedText: String {
+        confirmedText
+    }
+}
+#endif

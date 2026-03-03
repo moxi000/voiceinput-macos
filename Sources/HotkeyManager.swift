@@ -95,6 +95,30 @@ struct HotkeyConfig: Equatable {
 ///   - handsFree:  press to start, press again to stop
 /// Middle mouse button is always hands-free toggle.
 class HotkeyManager {
+    struct ModifierOnlyHoldMachine {
+        private(set) var requiredModifiers: CGEventFlags?
+
+        mutating func activate(requiredModifiers: CGEventFlags) {
+            let normalized = requiredModifiers.intersection(HotkeyManager.relevantModifierFlags)
+            self.requiredModifiers = normalized.isEmpty ? nil : normalized
+        }
+
+        mutating func shouldStop(on flags: CGEventFlags) -> Bool {
+            guard let requiredModifiers else { return false }
+            let active = flags.intersection(HotkeyManager.relevantModifierFlags)
+            let stillHolding = (active.rawValue & requiredModifiers.rawValue) == requiredModifiers.rawValue
+            if stillHolding { return false }
+            self.requiredModifiers = nil
+            return true
+        }
+
+        mutating func reset() {
+            requiredModifiers = nil
+        }
+    }
+
+    static let relevantModifierFlags: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
+
     var onRecordStart: ((_ mode: HotkeyMode) -> Void)?
     var onRecordStop: (() -> Void)?
 
@@ -110,6 +134,7 @@ class HotkeyManager {
     private var lastModTapTime: [String: Date] = [:]  // "hold"/"free" -> last tap time
     private let doubleTapInterval: TimeInterval = 0.35
     private var currentModifiers: CGEventFlags = []
+    private var modifierOnlyHoldMachine = ModifierOnlyHoldMachine()
 
     init() {
         holdToTalkConfig = HotkeyConfig.load(prefix: "hotkey_hold", fallback: .defaultHoldToTalk)
@@ -189,9 +214,26 @@ class HotkeyManager {
         }
     }
 
-    func resetState() {
+    private func beginRecording(mode: HotkeyMode, modifierOnlyRequired: CGEventFlags? = nil) {
+        isHolding = true
+        activeMode = mode
+        if mode == .holdToTalk, let modifierOnlyRequired {
+            modifierOnlyHoldMachine.activate(requiredModifiers: modifierOnlyRequired)
+        } else {
+            modifierOnlyHoldMachine.reset()
+        }
+    }
+
+    private func endRecording() {
         isHolding = false
         activeMode = nil
+        modifierOnlyHoldMachine.reset()
+    }
+
+    func resetState() {
+        endRecording()
+        currentModifiers = []
+        lastModTapTime.removeAll()
     }
 
     // MARK: - Event Tap
@@ -221,12 +263,10 @@ class HotkeyManager {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 if self.isHolding {
-                    self.isHolding = false
-                    self.activeMode = nil
+                    self.endRecording()
                     self.onRecordStop?()
                 } else {
-                    self.isHolding = true
-                    self.activeMode = .handsFree
+                    self.beginRecording(mode: .handsFree)
                     self.onRecordStart?(.handsFree)
                 }
             }
@@ -240,16 +280,22 @@ class HotkeyManager {
         if isHolding && activeMode == .holdToTalk {
             // keyUp of the hold key — stop (ignore modifiers, user may release in any order)
             if type == .keyUp, let htc = holdToTalkConfig, htc.keyCode >= 0, keyCode == htc.keyCode {
-                isHolding = false
-                activeMode = nil
+                endRecording()
                 DispatchQueue.main.async { [weak self] in self?.onRecordStop?() }
                 return nil
             }
             // Modifier released during hold — stop if it was in hold config
             if type == .flagsChanged, let htc = holdToTalkConfig {
-                if htc.keyCode < 0 || !Self.matchesMods(flags, htc.modifiers) {
-                    isHolding = false
-                    activeMode = nil
+                if htc.keyCode == -1 {
+                    if modifierOnlyHoldMachine.shouldStop(on: flags) {
+                        endRecording()
+                        DispatchQueue.main.async { [weak self] in self?.onRecordStop?() }
+                    }
+                    return Unmanaged.passUnretained(event)
+                }
+
+                if !Self.matchesMods(flags, htc.modifiers) {
+                    endRecording()
                     DispatchQueue.main.async { [weak self] in self?.onRecordStop?() }
                 }
                 return Unmanaged.passUnretained(event)
@@ -258,7 +304,7 @@ class HotkeyManager {
 
         // --- Check for hotkey activation ---
         if type == .flagsChanged {
-            currentModifiers = flags.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
+            currentModifiers = flags.intersection(Self.relevantModifierFlags)
             // Check modifier-only hotkeys (double-tap)
             if let result = checkModifierOnly(holdToTalkConfig, tag: "hold", mode: .holdToTalk) { return result }
             if let result = checkModifierOnly(handsFreeConfig, tag: "free", mode: .handsFree) { return result }
@@ -273,8 +319,7 @@ class HotkeyManager {
             if let htc = holdToTalkConfig, htc.keyCode >= 0,
                keyCode == htc.keyCode, Self.matchesMods(flags, htc.modifiers) {
                 if !isHolding {
-                    isHolding = true
-                    activeMode = .holdToTalk
+                    beginRecording(mode: .holdToTalk)
                     DispatchQueue.main.async { [weak self] in self?.onRecordStart?(.holdToTalk) }
                 }
                 return nil
@@ -286,12 +331,10 @@ class HotkeyManager {
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self else { return }
                     if self.isHolding {
-                        self.isHolding = false
-                        self.activeMode = nil
+                        self.endRecording()
                         self.onRecordStop?()
                     } else {
-                        self.isHolding = true
-                        self.activeMode = .handsFree
+                        self.beginRecording(mode: .handsFree)
                         self.onRecordStart?(.handsFree)
                     }
                 }
@@ -314,7 +357,8 @@ class HotkeyManager {
     private func checkModifierOnly(_ config: HotkeyConfig?, tag: String, mode: HotkeyMode) -> Unmanaged<CGEvent>? {
         guard let cfg = config, cfg.keyCode == -1 else { return nil }
 
-        let targetMods = cfg.modifiers.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
+        let targetMods = cfg.modifiers.intersection(Self.relevantModifierFlags)
+        guard !targetMods.isEmpty else { return nil }
         let isPressed = currentModifiers == targetMods
 
         if isPressed {
@@ -322,23 +366,23 @@ class HotkeyManager {
             if let last = lastModTapTime[tag], now.timeIntervalSince(last) < doubleTapInterval {
                 lastModTapTime[tag] = nil
                 // Double-tap detected
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    if mode == .holdToTalk {
-                        if !self.isHolding {
-                            self.isHolding = true
-                            self.activeMode = .holdToTalk
-                            self.onRecordStart?(.holdToTalk)
+                if mode == .holdToTalk {
+                    if !isHolding {
+                        beginRecording(mode: .holdToTalk, modifierOnlyRequired: targetMods)
+                        DispatchQueue.main.async { [weak self] in
+                            self?.onRecordStart?(.holdToTalk)
+                        }
+                    }
+                } else {
+                    if isHolding {
+                        endRecording()
+                        DispatchQueue.main.async { [weak self] in
+                            self?.onRecordStop?()
                         }
                     } else {
-                        if self.isHolding {
-                            self.isHolding = false
-                            self.activeMode = nil
-                            self.onRecordStop?()
-                        } else {
-                            self.isHolding = true
-                            self.activeMode = .handsFree
-                            self.onRecordStart?(.handsFree)
+                        beginRecording(mode: .handsFree)
+                        DispatchQueue.main.async { [weak self] in
+                            self?.onRecordStart?(.handsFree)
                         }
                     }
                 }
@@ -352,7 +396,6 @@ class HotkeyManager {
     // MARK: - Helpers
 
     static func matchesMods(_ flags: CGEventFlags, _ required: CGEventFlags) -> Bool {
-        let relevant: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
-        return flags.intersection(relevant) == required.intersection(relevant)
+        return flags.intersection(relevantModifierFlags) == required.intersection(relevantModifierFlags)
     }
 }

@@ -1,0 +1,3769 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: .build, build, Sources, Tests, .gitignore, icon.svg, Package.swift, VoiceInput.entitlements
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+Sources/
+  AppDelegate.swift
+  ASRService.swift
+  AudioRecorder.swift
+  DataPaths.swift
+  EditableTextField.swift
+  HistoryLogger.swift
+  HotkeyManager.swift
+  HotkeyRecorderView.swift
+  InlineTextInjector.swift
+  KeychainHelper.swift
+  LLMPostProcessor.swift
+  LocalASR.swift
+  main.swift
+  OverlayPanel.swift
+  TextInjector.swift
+  VolcengineASR.swift
+  WordReplacer.swift
+Tests/
+  HotkeyManagerTests.swift
+  InlineDiffTests.swift
+  WordReplacerTests.swift
+.gitignore
+icon.svg
+Package.swift
+VoiceInput.entitlements
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="icon.svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Background gradient - deep purple to blue -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6C3CE1"/>
+      <stop offset="50%" style="stop-color:#4A5FE0"/>
+      <stop offset="100%" style="stop-color:#2B8FED"/>
+    </linearGradient>
+    <!-- Microphone body gradient -->
+    <linearGradient id="micGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#E0E4F0"/>
+    </linearGradient>
+    <!-- Glow effect -->
+    <radialGradient id="glowGrad" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.25)"/>
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0)"/>
+    </radialGradient>
+    <!-- Sound wave gradient -->
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0.3"/>
+    </linearGradient>
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="#1a1040" flood-opacity="0.4"/>
+    </filter>
+    <!-- Inner shadow for mic head -->
+    <filter id="innerGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded square background (macOS style) -->
+  <rect x="20" y="20" width="984" height="984" rx="220" ry="220" fill="url(#bgGrad)"/>
+
+  <!-- Subtle top-left light reflection -->
+  <rect x="20" y="20" width="984" height="984" rx="220" ry="220" fill="url(#glowGrad)"/>
+
+  <!-- Subtle grid/texture pattern overlay -->
+  <rect x="20" y="20" width="984" height="984" rx="220" ry="220" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+
+  <!-- Sound wave arcs - right side -->
+  <path d="M 670 410 Q 740 512 670 614" fill="none" stroke="url(#waveGrad)" stroke-width="32" stroke-linecap="round" opacity="0.8"/>
+  <path d="M 730 340 Q 830 512 730 684" fill="none" stroke="url(#waveGrad)" stroke-width="28" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 790 280 Q 920 512 790 744" fill="none" stroke="url(#waveGrad)" stroke-width="24" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Sound wave arcs - left side -->
+  <path d="M 354 410 Q 284 512 354 614" fill="none" stroke="url(#waveGrad)" stroke-width="32" stroke-linecap="round" opacity="0.8"/>
+  <path d="M 294 340 Q 194 512 294 684" fill="none" stroke="url(#waveGrad)" stroke-width="28" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 234 280 Q 104 512 234 744" fill="none" stroke="url(#waveGrad)" stroke-width="24" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Microphone group with shadow -->
+  <g filter="url(#shadow)">
+    <!-- Microphone stand/base -->
+    <rect x="488" y="660" width="48" height="120" rx="10" fill="url(#micGrad)" opacity="0.95"/>
+    <!-- Microphone base plate -->
+    <rect x="430" y="760" width="164" height="36" rx="18" fill="url(#micGrad)" opacity="0.95"/>
+
+    <!-- Microphone holder arc -->
+    <path d="M 410 540 Q 410 660 512 660 Q 614 660 614 540" fill="none" stroke="url(#micGrad)" stroke-width="36" stroke-linecap="round" opacity="0.95"/>
+
+    <!-- Microphone head (capsule shape) -->
+    <rect x="432" y="280" width="160" height="280" rx="80" fill="url(#micGrad)"/>
+
+    <!-- Microphone grille lines -->
+    <line x1="458" y1="340" x2="566" y2="340" stroke="#C0C4D8" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+    <line x1="458" y1="370" x2="566" y2="370" stroke="#C0C4D8" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+    <line x1="458" y1="400" x2="566" y2="400" stroke="#C0C4D8" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+    <line x1="458" y1="430" x2="566" y2="430" stroke="#C0C4D8" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+    <line x1="458" y1="460" x2="566" y2="460" stroke="#C0C4D8" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+    <line x1="460" y1="490" x2="564" y2="490" stroke="#C0C4D8" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+
+    <!-- Microphone highlight/reflection -->
+    <rect x="460" y="295" width="40" height="180" rx="20" fill="white" opacity="0.25"/>
+  </g>
+</svg>
+</file>
+
+<file path="VoiceInput.entitlements">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Microphone access for voice recording -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <!-- Outgoing network connections for ASR and LLM API calls -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+</dict>
+</plist>
+</file>
+
+<file path="Sources/ASRService.swift">
+import Foundation
+
+/// Common interface for speech recognition services.
+protocol ASRService: AnyObject {
+    /// Called with partial transcription text (on main thread).
+    var onPartialResult: ((String) -> Void)? { get set }
+    /// Called with final transcription text (on main thread).
+    var onFinalResult: ((String) -> Void)? { get set }
+    /// Called on error (on main thread).
+    var onError: ((String) -> Void)? { get set }
+
+    /// Start a streaming session.
+    func startStreaming()
+    /// Send a chunk of PCM audio data (16kHz, 16-bit, mono).
+    func sendAudioChunk(_ pcmData: Data)
+    /// End the streaming session (signal end of audio).
+    func endStreaming()
+    /// Cancel the session immediately.
+    func cancel()
+}
+</file>
+
+<file path="Sources/EditableTextField.swift">
+import Cocoa
+
+/// NSTextField 子类，修复菜单栏应用中 Cmd+V/C/X/A 快捷键不生效的问题。
+/// 原因：菜单栏应用没有标准 Edit 菜单，快捷键无法通过菜单项路由。
+class EditableTextField: NSTextField {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command) {
+            switch event.charactersIgnoringModifiers {
+            case "v":
+                return NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: self)
+            case "c":
+                return NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: self)
+            case "x":
+                return NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: self)
+            case "a":
+                return NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: self)
+            case "z":
+                if event.modifierFlags.contains(.shift) {
+                    return NSApp.sendAction(Selector(("redo:")), to: nil, from: self)
+                }
+                return NSApp.sendAction(Selector(("undo:")), to: nil, from: self)
+            default: break
+            }
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
+/// NSSecureTextField 子类，同上。
+class EditableSecureTextField: NSSecureTextField {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command) {
+            switch event.charactersIgnoringModifiers {
+            case "v":
+                return NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: self)
+            case "a":
+                return NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: self)
+            // 密码框不支持复制/剪切，仅粘贴和全选
+            default: break
+            }
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+</file>
+
+<file path="Sources/KeychainHelper.swift">
+import Foundation
+import Security
+
+/// Thin wrapper around the macOS Keychain for storing sensitive strings.
+enum KeychainHelper {
+    private static let service = "com.voiceinput.credentials"
+
+    /// Save a string value to the Keychain.
+    static func save(key: String, value: String) {
+        guard let data = value.data(using: .utf8) else { return }
+
+        // Delete any existing item first
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+
+        let addQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+            kSecValueData as String: data,
+        ]
+        SecItemAdd(addQuery as CFDictionary, nil)
+    }
+
+    /// Load a string value from the Keychain. Returns nil if not found.
+    static func load(key: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// Delete a key from the Keychain.
+    static func delete(key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+}
+</file>
+
+<file path="Sources/LLMPostProcessor.swift">
+import Foundation
+
+/// 调用 OpenAI-compatible chat/completions 接口，对语音识别结果进行后处理。
+/// 优化标点、断句、去除结巴/重复等口语问题。
+enum LLMPostProcessor {
+
+    // MARK: - 默认提示词
+
+    static let defaultSystemPrompt = """
+    你是一个语音识别文本后处理助手。你的任务是修正语音识别的原始输出，使其更加准确、自然、易读。
+
+    请遵循以下规则：
+    1. 修正标点符号：添加或纠正逗号、句号、问号、感叹号等，使断句自然。
+    2. 去除口语结巴和重复：例如"我我我想要"应修正为"我想要"，"就是就是说"应修正为"就是说"。
+    3. 去除口语填充词：删除无意义的"嗯"、"啊"、"那个"、"然后"等口语填充词，但保留有语义的部分。
+    4. 修正明显的同音字错误（如果上下文能明确判断）。
+    5. 保持原文的核心意思不变，不添加、不删减实质内容。
+    6. 不要改变专有名词、人名、地名等。
+    7. 如果原文已经很流畅，只需微调标点即可，不要过度修改。
+
+    只输出修正后的文本，不要输出任何解释或额外内容。
+    """
+
+    // MARK: - 配置读写
+
+    static var enabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "llm_post_enabled") }
+        set { UserDefaults.standard.set(newValue, forKey: "llm_post_enabled") }
+    }
+
+    static var baseURL: String {
+        get { UserDefaults.standard.string(forKey: "llm_post_base_url") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "llm_post_base_url") }
+    }
+
+    static var model: String {
+        get { UserDefaults.standard.string(forKey: "llm_post_model") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "llm_post_model") }
+    }
+
+    static var apiKey: String {
+        get { KeychainHelper.load(key: "llm_post_api_key") ?? "" }
+        set { KeychainHelper.save(key: "llm_post_api_key", value: newValue) }
+    }
+
+    /// 用户自定义提示词，为空时使用默认值
+    static var systemPrompt: String {
+        get {
+            let custom = UserDefaults.standard.string(forKey: "llm_post_system_prompt") ?? ""
+            return custom.isEmpty ? defaultSystemPrompt : custom
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "llm_post_system_prompt") }
+    }
+
+    /// 重置提示词为默认值
+    static func resetSystemPrompt() {
+        UserDefaults.standard.removeObject(forKey: "llm_post_system_prompt")
+    }
+
+    /// 配置是否齐全（启用时才检查）
+    static var isConfigured: Bool {
+        !baseURL.isEmpty && !model.isEmpty && !apiKey.isEmpty
+    }
+
+    // MARK: - 测试连接
+
+    /// 测试 API 连通性。使用传入的配置（不需要先保存）。
+    /// 回调在主线程，success=true 时 message 为模型回复，否则为错误描述。
+    static func testConnection(
+        baseURL: String, model: String, apiKey: String,
+        completion: @escaping (_ success: Bool, _ message: String) -> Void
+    ) {
+        let trimmedBase = baseURL.hasSuffix("/") ? String(baseURL.dropLast()) : baseURL
+        guard let url = URL(string: "\(trimmedBase)/chat/completions") else {
+            DispatchQueue.main.async { completion(false, "无效的 Base URL") }
+            return
+        }
+
+        let body: [String: Any] = [
+            "model": model,
+            "messages": [
+                ["role": "user", "content": "你好"]
+            ],
+            "temperature": 0.3,
+            "max_tokens": 50
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
+            DispatchQueue.main.async { completion(false, "JSON 序列化失败") }
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.httpBody = jsonData
+        request.timeoutInterval = 10
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async { completion(false, "请求失败: \(error.localizedDescription)") }
+                return
+            }
+
+            // 检查 HTTP 状态码
+            if let httpResp = response as? HTTPURLResponse, httpResp.statusCode != 200 {
+                let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+                DispatchQueue.main.async {
+                    completion(false, "HTTP \(httpResp.statusCode): \(body)")
+                }
+                return
+            }
+
+            guard let data = data else {
+                DispatchQueue.main.async { completion(false, "无响应数据") }
+                return
+            }
+
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let first = choices.first,
+                  let message = first["message"] as? [String: Any],
+                  let content = message["content"] as? String else {
+                let responseStr = String(data: data, encoding: .utf8) ?? "无法解析"
+                DispatchQueue.main.async { completion(false, "响应格式异常: \(responseStr)") }
+                return
+            }
+
+            DispatchQueue.main.async { completion(true, content.trimmingCharacters(in: .whitespacesAndNewlines)) }
+        }
+        task.resume()
+    }
+
+    // MARK: - 后处理
+
+    /// 对语音识别文本进行 LLM 后处理。
+    /// 如果未启用或配置不完整，直接返回原文。
+    static func process(_ text: String, completion: @escaping (String) -> Void) {
+        guard enabled, isConfigured, !text.isEmpty else {
+            completion(text)
+            return
+        }
+
+        let trimmedBase = baseURL.hasSuffix("/") ? String(baseURL.dropLast()) : baseURL
+        guard let url = URL(string: "\(trimmedBase)/chat/completions") else {
+            print("[LLM] ❌ 无效的 Base URL: \(baseURL)")
+            completion(text)
+            return
+        }
+
+        let body: [String: Any] = [
+            "model": model,
+            "messages": [
+                ["role": "system", "content": systemPrompt],
+                ["role": "user", "content": text]
+            ],
+            "temperature": 0.3,
+            "max_tokens": 2048
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
+            print("[LLM] ❌ JSON 序列化失败")
+            completion(text)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.httpBody = jsonData
+        request.timeoutInterval = 15
+
+        print("[LLM] 发送后处理请求...")
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("[LLM] ❌ 请求失败: \(error.localizedDescription)")
+                DispatchQueue.main.async { completion(text) }
+                return
+            }
+
+            guard let data = data else {
+                print("[LLM] ❌ 无响应数据")
+                DispatchQueue.main.async { completion(text) }
+                return
+            }
+
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let first = choices.first,
+                  let message = first["message"] as? [String: Any],
+                  let content = message["content"] as? String else {
+                // 尝试打印错误信息
+                if let responseStr = String(data: data, encoding: .utf8) {
+                    print("[LLM] ❌ 解析失败，响应: \(responseStr)")
+                }
+                DispatchQueue.main.async { completion(text) }
+                return
+            }
+
+            let result = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            if result.isEmpty {
+                print("[LLM] ⚠️ LLM 返回空内容，使用原文")
+                DispatchQueue.main.async { completion(text) }
+            } else {
+                let logResult = HistoryLogger.enabled ? result : "<redacted>"
+                print("[LLM] ✅ 后处理完成: \(logResult)")
+                DispatchQueue.main.async { completion(result) }
+            }
+        }
+        task.resume()
+    }
+}
+</file>
+
+<file path="Sources/main.swift">
+import Cocoa
+
+// Menu bar app — no Dock icon
+NSApplication.shared.setActivationPolicy(.accessory)
+
+let delegate = AppDelegate()
+NSApplication.shared.delegate = delegate
+NSApplication.shared.run()
+</file>
+
+<file path="Tests/HotkeyManagerTests.swift">
+import Testing
+import Cocoa
+@testable import VoiceInput
+
+/// Tests for HotkeyManager's state machine and matching logic.
+struct HotkeyManagerTests {
+
+    // MARK: - matchesMods (exact equality)
+
+    @Test("matchesMods: exact match returns true")
+    func matchesModsExact() {
+        let flags = CGEventFlags.maskAlternate
+        let required = CGEventFlags.maskAlternate
+        #expect(HotkeyManager.matchesMods(flags, required))
+    }
+
+    @Test("matchesMods: superset does not match")
+    func matchesModsSupersetFails() {
+        let flags: CGEventFlags = [.maskAlternate, .maskShift]
+        let required = CGEventFlags.maskAlternate
+        #expect(!HotkeyManager.matchesMods(flags, required))
+    }
+
+    @Test("matchesMods: subset does not match")
+    func matchesModsSubsetFails() {
+        let flags = CGEventFlags.maskAlternate
+        let required: CGEventFlags = [.maskAlternate, .maskShift]
+        #expect(!HotkeyManager.matchesMods(flags, required))
+    }
+
+    @Test("matchesMods: empty required matches empty flags")
+    func matchesModsEmpty() {
+        #expect(HotkeyManager.matchesMods(CGEventFlags(), CGEventFlags()))
+    }
+
+    @Test("matchesMods: ignores non-modifier flags")
+    func matchesModsIgnoresNonModifier() {
+        // Flags may contain non-modifier bits; matchesMods should only compare modifier bits
+        let flags: CGEventFlags = [.maskAlternate, .maskNonCoalesced]
+        let required = CGEventFlags.maskAlternate
+        #expect(HotkeyManager.matchesMods(flags, required))
+    }
+
+    // MARK: - HotkeyConfig displayString
+
+    @Test("HotkeyConfig: middle mouse displayString")
+    func middleMouseDisplayString() {
+        let config = HotkeyConfig(keyCode: -2, modifiers: CGEventFlags())
+        #expect(config.displayString == "鼠标中键")
+    }
+
+    @Test("HotkeyConfig: modifier-only displayString shows double-tap")
+    func modifierOnlyDisplayString() {
+        let config = HotkeyConfig(keyCode: -1, modifiers: .maskAlternate)
+        #expect(config.displayString == "双击⌥")
+    }
+
+    @Test("HotkeyConfig: regular key combo displayString")
+    func regularKeyDisplayString() {
+        let config = HotkeyConfig(keyCode: 6, modifiers: .maskAlternate)  // ⌥Z
+        #expect(config.displayString == "⌥Z")
+    }
+
+    // MARK: - resetState
+
+    @Test("resetState clears isHolding and activeMode")
+    func resetStateClearsState() {
+        let mgr = HotkeyManager()
+        // Simulate a recording state by triggering callbacks
+        mgr.onRecordStart = { _ in }
+        // resetState should clear internal state
+        mgr.resetState()
+        #expect(mgr.isHolding == false)
+        #expect(mgr.activeMode == nil)
+    }
+
+    // MARK: - Middle mouse keyCode isolation
+
+    @Test("Middle mouse keyCode=-2 is distinct from modifier-only keyCode=-1")
+    func middleMouseKeyCodeIsolation() {
+        // Middle mouse should NOT be treated as modifier-only
+        let middleMouse = HotkeyConfig(keyCode: -2, modifiers: CGEventFlags())
+        let modOnly = HotkeyConfig(keyCode: -1, modifiers: .maskAlternate)
+        #expect(middleMouse.keyCode != modOnly.keyCode)
+        // The fix ensures checkModifierOnly only handles keyCode == -1
+        #expect(middleMouse.keyCode == -2)
+        #expect(modOnly.keyCode == -1)
+    }
+
+    // MARK: - HotkeyConfig persistence round-trip
+
+    @Test("HotkeyConfig save and load round-trip")
+    func saveLoadRoundTrip() {
+        let defaults = UserDefaults.standard
+        let prefix = "test_hotkey_roundtrip"
+
+        // Clean up first
+        HotkeyConfig.clear(prefix: prefix, from: defaults)
+
+        let original = HotkeyConfig(keyCode: 6, modifiers: .maskAlternate)
+        original.save(prefix: prefix, to: defaults)
+
+        let loaded = HotkeyConfig.load(prefix: prefix, fallback: nil, from: defaults)
+        #expect(loaded != nil)
+        #expect(loaded?.keyCode == original.keyCode)
+        #expect(loaded?.modifiers == original.modifiers)
+
+        // Clean up
+        HotkeyConfig.clear(prefix: prefix, from: defaults)
+    }
+
+    @Test("HotkeyConfig clear disables loading")
+    func clearDisablesLoad() {
+        let defaults = UserDefaults.standard
+        let prefix = "test_hotkey_clear"
+
+        let config = HotkeyConfig(keyCode: 6, modifiers: .maskAlternate)
+        config.save(prefix: prefix, to: defaults)
+
+        HotkeyConfig.clear(prefix: prefix, from: defaults)
+
+        // After clear with enabled=false, load with nil fallback should return nil
+        let loaded = HotkeyConfig.load(prefix: prefix, fallback: nil, from: defaults)
+        #expect(loaded == nil)
+
+        // Clean up
+        defaults.removeObject(forKey: "\(prefix)_keycode")
+        defaults.removeObject(forKey: "\(prefix)_modifiers")
+        defaults.removeObject(forKey: "\(prefix)_enabled")
+    }
+}
+</file>
+
+<file path="Sources/DataPaths.swift">
+import Foundation
+
+enum DataPaths {
+    static let supportDirectory: URL = {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return appSupport.appendingPathComponent("VoiceInput")
+    }()
+
+    static let replacementsFile: URL = supportDirectory.appendingPathComponent("replacements.txt")
+    static let hotwordsFile: URL = supportDirectory.appendingPathComponent("hotwords.txt")
+    static let historyFile: URL = supportDirectory.appendingPathComponent("history.txt")
+
+    static func ensureDataDirectory() {
+        do {
+            try FileManager.default.createDirectory(at: supportDirectory, withIntermediateDirectories: true)
+        } catch {
+            print("[DataPaths] Failed to create support directory: \(error)")
+        }
+    }
+
+    static func ensureFileExists(at url: URL, defaultContent: String = "") {
+        ensureDataDirectory()
+        if !FileManager.default.fileExists(atPath: url.path) {
+            if !FileManager.default.createFile(atPath: url.path, contents: defaultContent.data(using: .utf8)) {
+                print("[DataPaths] Failed to create file: \(url.path)")
+            }
+        }
+    }
+}
+</file>
+
+<file path="Sources/HistoryLogger.swift">
+import Foundation
+
+enum HistoryLogger {
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f
+    }()
+
+    /// When false, calls to `log()` are no-ops (privacy mode).
+    static var enabled: Bool = true
+
+    static func log(_ text: String) {
+        guard enabled, !text.isEmpty else { return }
+
+        DataPaths.ensureFileExists(at: DataPaths.historyFile)
+
+        let timestamp = dateFormatter.string(from: Date())
+        let entry = "[\(timestamp)] \(text)\n"
+
+        guard let data = entry.data(using: .utf8) else { return }
+
+        if let handle = try? FileHandle(forWritingTo: DataPaths.historyFile) {
+            defer { handle.closeFile() }
+            handle.seekToEndOfFile()
+            handle.write(data)
+        }
+    }
+}
+</file>
+
+<file path="Sources/WordReplacer.swift">
+import Foundation
+
+enum WordReplacer {
+    static func applyReplacements(to text: String) -> String {
+        let url = DataPaths.replacementsFile
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+            return text
+        }
+        return applyReplacements(rules: content, to: text)
+    }
+
+    /// Apply replacement rules given as a multi-line string.
+    /// Exposed as internal for testability.
+    static func applyReplacements(rules: String, to text: String) -> String {
+        var result = text
+        for line in rules.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, !trimmed.hasPrefix("#") else { continue }
+
+            let original: String
+            let replacement: String
+
+            if let range = trimmed.range(of: "\u{2192}") {
+                // Split on first →
+                original = String(trimmed[trimmed.startIndex..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+                replacement = String(trimmed[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+            } else if let range = trimmed.range(of: ":") {
+                // Split on first :
+                original = String(trimmed[trimmed.startIndex..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+                replacement = String(trimmed[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+            } else {
+                continue
+            }
+
+            guard !original.isEmpty else { continue }
+            result = result.replacingOccurrences(of: original, with: replacement)
+        }
+        return result
+    }
+}
+</file>
+
+<file path="Tests/InlineDiffTests.swift">
+import Testing
+@testable import VoiceInput
+
+/// Tests for InlineTextInjector's diff algorithm.
+/// Calls the production static methods directly.
+struct InlineDiffTests {
+    @Test("Empty to non-empty")
+    func emptyToNonEmpty() {
+        let (del, ins) = InlineTextInjector.computeDiff(old: "", new: "hello")
+        #expect(del == 0)
+        #expect(ins == "hello")
+    }
+
+    @Test("Non-empty to empty")
+    func nonEmptyToEmpty() {
+        let (del, ins) = InlineTextInjector.computeDiff(old: "hello", new: "")
+        #expect(del == 5)
+        #expect(ins == "")
+    }
+
+    @Test("Identical strings — the crash scenario from Issue #1")
+    func identicalStrings() {
+        let (del, ins) = InlineTextInjector.computeDiff(old: "hello", new: "hello")
+        #expect(del == 0)
+        #expect(ins == "")
+    }
+
+    @Test("Completely different strings")
+    func completelyDifferent() {
+        let (del, ins) = InlineTextInjector.computeDiff(old: "abc", new: "xyz")
+        #expect(del == 3)
+        #expect(ins == "xyz")
+    }
+
+    @Test("Common prefix with different suffix")
+    func commonPrefixDiff() {
+        let (del, ins) = InlineTextInjector.computeDiff(old: "hello world", new: "hello swift")
+        #expect(del == 5)   // delete "world"
+        #expect(ins == "swift")
+    }
+
+    @Test("Extending existing text")
+    func extending() {
+        let (del, ins) = InlineTextInjector.computeDiff(old: "hel", new: "hello")
+        #expect(del == 0)
+        #expect(ins == "lo")
+    }
+
+    @Test("Shortening existing text")
+    func shortening() {
+        let (del, ins) = InlineTextInjector.computeDiff(old: "hello", new: "hel")
+        #expect(del == 2)
+        #expect(ins == "")
+    }
+
+    @Test("Unicode characters")
+    func unicodeDiff() {
+        let (del, ins) = InlineTextInjector.computeDiff(old: "你好世界", new: "你好Swift")
+        #expect(del == 2)     // delete "世界"
+        #expect(ins == "Swift")
+    }
+
+    @Test("Empty to empty")
+    func emptyToEmpty() {
+        let (del, ins) = InlineTextInjector.computeDiff(old: "", new: "")
+        #expect(del == 0)
+        #expect(ins == "")
+    }
+}
+</file>
+
+<file path="Tests/WordReplacerTests.swift">
+import Testing
+@testable import VoiceInput
+
+/// Tests for WordReplacer's parsing and replacement logic.
+/// Calls the production WordReplacer.applyReplacements(rules:to:) directly.
+struct WordReplacerTests {
+    @Test("Colon delimiter replacement")
+    func colonDelimiter() {
+        let result = WordReplacer.applyReplacements(rules: "苹果:Apple", to: "我喜欢苹果")
+        #expect(result == "我喜欢Apple")
+    }
+
+    @Test("Arrow delimiter replacement")
+    func arrowDelimiter() {
+        let result = WordReplacer.applyReplacements(rules: "谷歌→Google", to: "搜索谷歌")
+        #expect(result == "搜索Google")
+    }
+
+    @Test("Comments are ignored")
+    func commentsIgnored() {
+        let rules = """
+        # This is a comment
+        苹果:Apple
+        # Another comment
+        """
+        let result = WordReplacer.applyReplacements(rules: rules, to: "苹果手机")
+        #expect(result == "Apple手机")
+    }
+
+    @Test("Empty lines are ignored")
+    func emptyLinesIgnored() {
+        let rules = """
+        
+        苹果:Apple
+        
+        """
+        let result = WordReplacer.applyReplacements(rules: rules, to: "苹果")
+        #expect(result == "Apple")
+    }
+
+    @Test("Multiple replacements")
+    func multipleReplacements() {
+        let rules = """
+        苹果:Apple
+        谷歌→Google
+        """
+        let result = WordReplacer.applyReplacements(rules: rules, to: "苹果和谷歌")
+        #expect(result == "Apple和Google")
+    }
+
+    @Test("No match leaves text unchanged")
+    func noMatch() {
+        let result = WordReplacer.applyReplacements(rules: "苹果:Apple", to: "华为手机")
+        #expect(result == "华为手机")
+    }
+
+    @Test("Empty original is skipped")
+    func emptyOriginal() {
+        let result = WordReplacer.applyReplacements(rules: ":Apple", to: "苹果")
+        #expect(result == "苹果")
+    }
+
+    @Test("Line without delimiter is skipped")
+    func noDelimiter() {
+        let result = WordReplacer.applyReplacements(rules: "just some text", to: "just some text")
+        #expect(result == "just some text")
+    }
+
+    @Test("Whitespace around delimiter is trimmed")
+    func whitespaceTrimming() {
+        let result = WordReplacer.applyReplacements(rules: "苹果 : Apple", to: "苹果")
+        #expect(result == "Apple")
+    }
+}
+</file>
+
+<file path=".gitignore">
+.build/
+.DS_Store
+DerivedData/
+xcuserdata/
+VoiceInput.app
+</file>
+
+<file path="Sources/AudioRecorder.swift">
+import AVFoundation
+import Foundation
+
+/// Records microphone audio as 16kHz 16-bit mono PCM data chunks.
+class AudioRecorder {
+    private let engine = AVAudioEngine()
+    private var isRecording = false
+    private var pcmBuffer = Data()
+
+    /// Callback with PCM data chunks during recording
+    var onAudioChunk: ((Data) -> Void)?
+
+    /// Callback with normalized audio level (0.0 – 1.0) for waveform visualization
+    var onAudioLevel: ((Float) -> Void)?
+
+    /// Start recording from the default input device
+    func start() throws {
+        guard !isRecording else { return }
+
+        // Ensure clean state: remove any leftover tap and reset engine
+        // This prevents ObjC exception on re-start after error/timeout
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        engine.reset()
+
+        let inputNode = engine.inputNode
+        let hardwareFormat = inputNode.outputFormat(forBus: 0)
+
+        guard hardwareFormat.sampleRate > 0, hardwareFormat.channelCount > 0 else {
+            throw NSError(domain: "AudioRecorder", code: 3,
+                          userInfo: [NSLocalizedDescriptionKey: "No audio input available (sampleRate=\(hardwareFormat.sampleRate))"])
+        }
+
+        // Target: 16kHz, mono, 16-bit integer PCM
+        guard let targetFormat = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: 16000,
+            channels: 1,
+            interleaved: true
+        ) else {
+            throw NSError(domain: "AudioRecorder", code: 1, userInfo: [NSLocalizedDescriptionKey: "Cannot create target format"])
+        }
+
+        guard let converter = AVAudioConverter(from: hardwareFormat, to: targetFormat) else {
+            throw NSError(domain: "AudioRecorder", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot create audio converter"])
+        }
+
+        pcmBuffer = Data()
+
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: hardwareFormat) { [weak self] buffer, _ in
+            guard let self = self else { return }
+
+            // Convert to 16kHz mono PCM Int16
+            let frameCapacity = AVAudioFrameCount(
+                Double(buffer.frameLength) * 16000.0 / hardwareFormat.sampleRate
+            )
+            guard frameCapacity > 0,
+                  let convertedBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCapacity) else {
+                return
+            }
+
+            var error: NSError?
+            let status = converter.convert(to: convertedBuffer, error: &error) { inNumPackets, outStatus in
+                outStatus.pointee = .haveData
+                return buffer
+            }
+
+            guard status != .error, error == nil else { return }
+
+            if let channelData = convertedBuffer.int16ChannelData {
+                let frameCount = Int(convertedBuffer.frameLength)
+                let byteCount = frameCount * 2 // 16-bit = 2 bytes
+                let data = Data(bytes: channelData[0], count: byteCount)
+                self.pcmBuffer.append(data)
+                self.onAudioChunk?(data)
+
+                // Compute normalized RMS level for waveform visualization
+                if frameCount > 0 {
+                    let samples = channelData[0]
+                    var sum: Float = 0
+                    for i in 0..<frameCount {
+                        let s = Float(samples[i])
+                        sum += s * s
+                    }
+                    let rms = sqrtf(sum / Float(frameCount))
+                    let normalized = min(rms / 8000.0, 1.0) // normalize to 0-1
+                    self.onAudioLevel?(normalized)
+                }
+            }
+        }
+
+        engine.prepare()
+        try engine.start()
+        isRecording = true
+        print("[AudioRecorder] Started recording (16kHz mono PCM)")
+    }
+
+    /// Stop recording and return all accumulated PCM data
+    func stop() -> Data {
+        if isRecording {
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+            isRecording = false
+            print("[AudioRecorder] Stopped, \(pcmBuffer.count) bytes PCM (\(String(format: "%.1f", Double(pcmBuffer.count) / 32000.0))s)")
+        }
+        let result = pcmBuffer
+        pcmBuffer = Data()
+        return result
+    }
+
+    var recording: Bool { isRecording }
+}
+</file>
+
+<file path="Sources/InlineTextInjector.swift">
+import Cocoa
+
+/// Types text directly into the active input field using CGEvent keyboard simulation.
+/// Uses common-prefix diffing to minimize keystrokes when ASR updates partial results.
+class InlineTextInjector {
+    /// The full text that has been typed into the target field so far.
+    private var lastTypedText: String = ""
+
+    private let eventSource = CGEventSource(stateID: .privateState)
+
+    /// Reset state. Call when starting a new recording session.
+    func reset() {
+        lastTypedText = ""
+    }
+
+    /// Update the typed text to match `newFullText`.
+    /// Diffs against lastTypedText: deletes from divergence point, then types new suffix.
+    func update(to newFullText: String) {
+        let diff = InlineTextInjector.computeDiff(old: lastTypedText, new: newFullText)
+
+        if diff.deleteCount == 0 && diff.insertSuffix.isEmpty { return }
+
+        if diff.deleteCount > 0 {
+            sendBackspaces(count: diff.deleteCount)
+        }
+        if !diff.insertSuffix.isEmpty {
+            sendString(diff.insertSuffix)
+        }
+
+        lastTypedText = newFullText
+    }
+
+    /// Apply final corrections (e.g., after WordReplacer), then reset state.
+    func finalize(with finalText: String) {
+        update(to: finalText)
+        lastTypedText = ""
+    }
+
+    /// Delete ALL text that was typed (for error recovery / cancellation).
+    func deleteAll() {
+        if !lastTypedText.isEmpty {
+            sendBackspaces(count: lastTypedText.count)
+        }
+        lastTypedText = ""
+    }
+
+    // MARK: - CGEvent Simulation
+
+    private func sendBackspaces(count: Int) {
+        for i in 0..<count {
+            let down = CGEvent(keyboardEventSource: eventSource, virtualKey: 0x33, keyDown: true)
+            down?.post(tap: .cgSessionEventTap)
+            let up = CGEvent(keyboardEventSource: eventSource, virtualKey: 0x33, keyDown: false)
+            up?.post(tap: .cgSessionEventTap)
+            // Brief pause every 20 backspaces to let the target app process
+            if i > 0 && i % 20 == 0 {
+                Thread.sleep(forTimeInterval: 0.004)
+            }
+        }
+    }
+
+    private func sendString(_ string: String) {
+        let utf16 = Array(string.utf16)
+        let chunkSize = 20  // macOS CGEvent limit per keyboardSetUnicodeString call
+
+        var offset = 0
+        while offset < utf16.count {
+            var end = min(offset + chunkSize, utf16.count)
+            // Don't split a surrogate pair at the chunk boundary
+            if end < utf16.count && UTF16.isLeadSurrogate(utf16[end - 1]) {
+                end -= 1
+            }
+            var chunk = Array(utf16[offset..<end])
+
+            let down = CGEvent(keyboardEventSource: eventSource, virtualKey: 0, keyDown: true)
+            down?.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: &chunk)
+            down?.post(tap: .cgSessionEventTap)
+
+            let up = CGEvent(keyboardEventSource: eventSource, virtualKey: 0, keyDown: false)
+            up?.post(tap: .cgSessionEventTap)
+
+            offset = end
+            if offset < utf16.count {
+                Thread.sleep(forTimeInterval: 0.004)
+            }
+        }
+    }
+
+    // MARK: - Diffing (internal for testability)
+
+    /// Compute the number of characters that match at the start of both arrays.
+    static func commonPrefixLength(_ a: [Character], _ b: [Character]) -> Int {
+        let minLen = min(a.count, b.count)
+        for i in 0..<minLen {
+            if a[i] != b[i] { return i }
+        }
+        return minLen
+    }
+
+    /// Compute the diff between old and new text.
+    /// Returns how many characters to delete from the end and what suffix to insert.
+    static func computeDiff(old: String, new: String) -> (deleteCount: Int, insertSuffix: String) {
+        let oldChars = Array(old)
+        let newChars = Array(new)
+        let commonLen = commonPrefixLength(oldChars, newChars)
+        let deleteCount = oldChars.count - commonLen
+        let insertSuffix = String(new.dropFirst(commonLen))
+        return (deleteCount, insertSuffix)
+    }
+}
+</file>
+
+<file path="Sources/LocalASR.swift">
+import Foundation
+import Network
+
+/// Local ASR service using a raw TCP connection to a local server.
+/// Protocol: HTTP chunked POST with length-prefixed audio frames, SSE response stream with JSON events.
+class LocalASR: ASRService {
+    private let host: String
+    private let port: UInt16
+
+    private var connection: NWConnection?
+    private let stateQueue = DispatchQueue(label: "local.asr.state")
+    private var _isConnected = false
+    private var _pendingChunks: [Data] = []
+    private var responseBuffer = Data()
+    private var _didEmitFinal = false
+
+    var onPartialResult: ((String) -> Void)?
+    var onFinalResult: ((String) -> Void)?
+    var onError: ((String) -> Void)?
+
+    init(host: String, port: UInt16) {
+        self.host = host
+        self.port = port
+    }
+
+    // MARK: - ASRService
+
+    func startStreaming() {
+        stateQueue.sync {
+            _isConnected = false
+            _pendingChunks = []
+            _didEmitFinal = false
+        }
+        responseBuffer = Data()
+
+        let nwHost = NWEndpoint.Host(host)
+        guard let nwPort = NWEndpoint.Port(rawValue: port) else {
+            emitError("无效端口: \(port)")
+            return
+        }
+        connection = NWConnection(host: nwHost, port: nwPort, using: .tcp)
+
+        connection?.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .ready:
+                self?.stateQueue.sync { self?._isConnected = true }
+                print("[LocalASR] Connected to \(self?.host ?? ""):\(self?.port ?? 0)")
+                self?.sendHTTPHandshake()
+                self?.readResponseHeaders()
+            case .failed(let error):
+                print("[LocalASR] Connection failed: \(error)")
+                self?.emitError("连接失败: \(error.localizedDescription)")
+            case .cancelled:
+                print("[LocalASR] Connection cancelled")
+            default:
+                break
+            }
+        }
+
+        connection?.start(queue: .global(qos: .userInitiated))
+        print("[LocalASR] Connecting to \(host):\(port)...")
+    }
+
+    func sendAudioChunk(_ pcmData: Data) {
+        guard !pcmData.isEmpty else { return }
+
+        let connected = stateQueue.sync {
+            if !_isConnected {
+                _pendingChunks.append(pcmData)
+                return false
+            }
+            return true
+        }
+
+        if connected {
+            sendAudioFrame(pcmData)
+        }
+    }
+
+    func endStreaming() {
+        let connected = stateQueue.sync {
+            if !_isConnected {
+                _pendingChunks.append(Data())  // sentinel for end-of-stream
+                return false
+            }
+            return true
+        }
+
+        if connected {
+            sendEndFrame()
+            print("[LocalASR] Sent end-of-stream marker")
+        }
+    }
+
+    func cancel() {
+        stateQueue.sync {
+            _isConnected = false
+            _pendingChunks = []
+        }
+        connection?.cancel()
+        connection = nil
+    }
+
+    // MARK: - HTTP Handshake
+
+    private func sendHTTPHandshake() {
+        let request = "POST /asr/realtime HTTP/1.1\r\n"
+            + "Host: \(host):\(port)\r\n"
+            + "Content-Type: application/octet-stream\r\n"
+            + "Transfer-Encoding: chunked\r\n"
+            + "Connection: keep-alive\r\n"
+            + "\r\n"
+
+        guard let data = request.data(using: .utf8) else { return }
+        connection?.send(content: data, completion: .contentProcessed { [weak self] error in
+            if let error = error {
+                self?.emitError("握手发送失败: \(error.localizedDescription)")
+            } else {
+                print("[LocalASR] HTTP handshake sent")
+                self?.flushPendingChunks()
+            }
+        })
+    }
+
+    // MARK: - Read Response Headers then SSE
+
+    private func readResponseHeaders() {
+        readUntilHeaderEnd(accumulated: Data())
+    }
+
+    private func readUntilHeaderEnd(accumulated: Data) {
+        connection?.receive(minimumIncompleteLength: 1, maximumLength: 4096) {
+            [weak self] content, _, isComplete, error in
+            guard let self = self else { return }
+
+            if let error = error {
+                self.emitError("读取响应失败: \(error.localizedDescription)")
+                return
+            }
+
+            var buffer = accumulated
+            if let content = content {
+                buffer.append(content)
+            }
+
+            let separator = Data([0x0D, 0x0A, 0x0D, 0x0A])  // \r\n\r\n
+            if let headerEndRange = buffer.range(of: separator) {
+                // Headers complete
+                let bodyStart = headerEndRange.upperBound
+                if bodyStart < buffer.count {
+                    let initialBody = buffer[bodyStart...]
+                    self.responseBuffer.append(contentsOf: initialBody)
+                    self.processSSEBuffer()
+                }
+
+                // Log status line
+                let headerData = buffer[buffer.startIndex..<headerEndRange.lowerBound]
+                if let headerStr = String(data: headerData, encoding: .utf8) {
+                    let firstLine = headerStr.components(separatedBy: "\r\n").first ?? ""
+                    print("[LocalASR] Response: \(firstLine)")
+                }
+
+                // Start continuous SSE reading
+                self.readSSEData()
+            } else if isComplete {
+                self.emitError("连接关闭，未收到完整响应头")
+            } else {
+                self.readUntilHeaderEnd(accumulated: buffer)
+            }
+        }
+    }
+
+    // MARK: - SSE Reading
+
+    private func readSSEData() {
+        connection?.receive(minimumIncompleteLength: 1, maximumLength: 65536) {
+            [weak self] content, _, isComplete, error in
+            guard let self = self else { return }
+
+            if let error = error {
+                let emitFinal = self.stateQueue.sync { self._didEmitFinal }
+                if !emitFinal {
+                    self.emitError("SSE读取错误: \(error.localizedDescription)")
+                }
+                return
+            }
+
+            if let content = content {
+                self.responseBuffer.append(content)
+                self.processSSEBuffer()
+            }
+
+            if isComplete {
+                self.stateQueue.sync {
+                    if !self._didEmitFinal {
+                        self._didEmitFinal = true
+                        print("[LocalASR] Connection completed without explicit done signal")
+                    }
+                }
+                return
+            }
+
+            let emitFinal = self.stateQueue.sync { self._didEmitFinal }
+            if !emitFinal {
+                self.readSSEData()
+            }
+        }
+    }
+
+    private func processSSEBuffer() {
+        guard let str = String(data: responseBuffer, encoding: .utf8) else { return }
+
+        let lines = str.components(separatedBy: "\n")
+
+        // Keep the last incomplete line in the buffer
+        if str.hasSuffix("\n") {
+            responseBuffer = Data()
+        } else {
+            let lastLine = lines.last ?? ""
+            responseBuffer = lastLine.data(using: .utf8) ?? Data()
+        }
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.hasPrefix("data: ") else { continue }
+
+            let jsonStr = String(trimmed.dropFirst(6))
+            guard let jsonData = jsonStr.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+            else { continue }
+
+            handleSSEEvent(json)
+        }
+    }
+
+    private func handleSSEEvent(_ json: [String: Any]) {
+        // Skip status/ready events
+        if json["status"] as? String == "ready" { return }
+
+        let isDone = json["done"] as? Bool ?? false
+
+        // Extract text from results array:
+        // results[last].text is the merged transcript
+        let text: String
+        if let results = json["results"] as? [[String: Any]], let last = results.last {
+            text = last["text"] as? String ?? ""
+        } else {
+            text = json["text"] as? String ?? ""
+        }
+
+        if isDone {
+            let alreadyEmitted = stateQueue.sync {
+                if _didEmitFinal { return true }
+                _didEmitFinal = true
+                return false
+            }
+            guard !alreadyEmitted else { return }
+            let logText = HistoryLogger.enabled ? text : "<redacted>"
+            print("[LocalASR] Final: \(logText)")
+            DispatchQueue.main.async { self.onFinalResult?(text) }
+            connection?.cancel()
+        } else if !text.isEmpty {
+            let logText2 = HistoryLogger.enabled ? text : "<redacted>"
+            print("[LocalASR] Partial: \(logText2)")
+            DispatchQueue.main.async { self.onPartialResult?(text) }
+        }
+    }
+
+    // MARK: - Send Audio Frames
+
+    private func flushPendingChunks() {
+        let chunks = stateQueue.sync {
+            let c = _pendingChunks
+            _pendingChunks = []
+            return c
+        }
+
+        for chunk in chunks {
+            if chunk.isEmpty {
+                sendEndFrame()
+                print("[LocalASR] Sent end-of-stream marker (deferred)")
+            } else {
+                sendAudioFrame(chunk)
+            }
+        }
+    }
+
+    private func sendAudioFrame(_ pcmData: Data) {
+        // Length-prefixed frame: 4-byte big-endian uint32 length + PCM data
+        var length = UInt32(pcmData.count).bigEndian
+        var frame = Data(bytes: &length, count: 4)
+        frame.append(pcmData)
+
+        connection?.send(content: frame, completion: .contentProcessed { error in
+            if let error = error {
+                print("[LocalASR] Audio send error: \(error.localizedDescription)")
+            }
+        })
+    }
+
+    private func sendEndFrame() {
+        // Zero-length frame: 4 bytes of zeros
+        let frame = Data(count: 4)
+        connection?.send(content: frame, completion: .contentProcessed { error in
+            if let error = error {
+                print("[LocalASR] End frame send error: \(error.localizedDescription)")
+            }
+        })
+    }
+
+    // MARK: - Helpers
+
+    private func emitError(_ msg: String) {
+        print("[LocalASR] Error: \(msg)")
+        DispatchQueue.main.async { self.onError?(msg) }
+    }
+}
+</file>
+
+<file path="Sources/TextInjector.swift">
+import Cocoa
+
+/// Injects text at the current cursor position by writing to the pasteboard
+/// and simulating Cmd+V.
+class TextInjector {
+    /// Paste text into a specific app (re-activate it first), or into the current frontmost app.
+    static func paste(_ text: String, targetApp: NSRunningApplication? = nil) {
+        // Save ALL current pasteboard content (including images, RTF, etc.)
+        let pasteboard = NSPasteboard.general
+        let previousItems = savePasteboardItems(pasteboard)
+
+        // Write our text
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+
+        // Re-activate the target app if provided
+        if let app = targetApp {
+            app.activate()
+            // Small delay to let the app come to front
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                simulatePaste()
+                restorePasteboard(previousItems)
+            }
+        } else {
+            simulatePaste()
+            restorePasteboard(previousItems)
+        }
+
+        print("[TextInjector] Pasted \(text.count) chars to \(targetApp?.localizedName ?? "frontmost")")
+    }
+
+    private static func simulatePaste() {
+        let source = CGEventSource(stateID: .hidSystemState)
+
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
+        keyDown?.flags = .maskCommand
+        keyDown?.post(tap: .cgSessionEventTap)
+
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
+        keyUp?.flags = .maskCommand
+        keyUp?.post(tap: .cgSessionEventTap)
+    }
+
+    // MARK: - Full Pasteboard Save/Restore
+
+    /// Save all pasteboard items with all their type/data pairs.
+    private static func savePasteboardItems(_ pasteboard: NSPasteboard) -> [[(NSPasteboard.PasteboardType, Data)]] {
+        guard let items = pasteboard.pasteboardItems else { return [] }
+        return items.map { item in
+            item.types.compactMap { type in
+                guard let data = item.data(forType: type) else { return nil }
+                return (type, data)
+            }
+        }
+    }
+
+    /// Restore previously saved pasteboard items after a delay.
+    private static func restorePasteboard(_ items: [[(NSPasteboard.PasteboardType, Data)]]) {
+        guard !items.isEmpty else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            let nsItems = items.map { pairs -> NSPasteboardItem in
+                let item = NSPasteboardItem()
+                for (type, data) in pairs {
+                    item.setData(data, forType: type)
+                }
+                return item
+            }
+            pasteboard.writeObjects(nsItems)
+        }
+    }
+}
+</file>
+
+<file path="Package.swift">
+// swift-tools-version: 6.2
+import PackageDescription
+
+let package = Package(
+    name: "VoiceInput",
+    platforms: [.macOS(.v26)],
+    targets: [
+        .executableTarget(
+            name: "VoiceInput",
+            path: "Sources",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ],
+            linkerSettings: [
+                .linkedFramework("Cocoa"),
+                .linkedFramework("AVFoundation"),
+                .linkedFramework("Carbon"),
+                .linkedFramework("Network"),
+            ]
+        ),
+        .testTarget(
+            name: "VoiceInputTests",
+            dependencies: ["VoiceInput"],
+            path: "Tests",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ]
+        )
+    ]
+)
+</file>
+
+<file path="Sources/HotkeyRecorderView.swift">
+import Cocoa
+
+/// A dedicated panel for recording a hotkey combination.
+/// Uses global event monitors to capture keys even if focus is lost.
+/// Accumulates held modifiers and waits for a non-modifier key to complete the combo,
+/// or accepts a single modifier press for modifier-only (double-tap) hotkeys.
+class HotkeyRecorderView: NSTextField {
+    /// Called when a new key combo is captured. (keyCode, modifiers)
+    var onHotkeyRecorded: ((Int64, CGEventFlags) -> Void)?
+
+    private var isRecording = false
+    private var globalMonitor: Any?
+    private var localMonitor: Any?
+    private var currentModifiers: NSEvent.ModifierFlags = []
+    private var modifierTimer: Timer?
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+
+    deinit {
+        stopRecording()
+    }
+
+    private func setup() {
+        isEditable = false
+        isSelectable = false
+        alignment = .center
+        font = NSFont.monospacedSystemFont(ofSize: 15, weight: .medium)
+        isBezeled = true
+        bezelStyle = .roundedBezel
+        placeholderString = "点击此处录制快捷键"
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
+    }
+
+    private func startRecording() {
+        isRecording = true
+        currentModifiers = []
+        stringValue = "请按下快捷键组合..."
+        textColor = .systemOrange
+
+        // Global monitor captures events even if another app steals focus
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged, .otherMouseDown]) { [weak self] event in
+            self?.handleRecordEvent(event)
+        }
+
+        // Local monitor captures events when this app is in focus
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged, .otherMouseDown]) { [weak self] event in
+            self?.handleRecordEvent(event)
+            return nil  // consume the event
+        }
+    }
+
+    private func stopRecording() {
+        isRecording = false
+        textColor = .labelColor
+        currentModifiers = []
+        modifierTimer?.invalidate()
+        modifierTimer = nil
+
+        if let g = globalMonitor {
+            NSEvent.removeMonitor(g)
+            globalMonitor = nil
+        }
+        if let l = localMonitor {
+            NSEvent.removeMonitor(l)
+            localMonitor = nil
+        }
+    }
+
+    private func handleRecordEvent(_ event: NSEvent) {
+        // Mouse button
+        if event.type == .otherMouseDown && event.buttonNumber == 2 {
+            modifierTimer?.invalidate()
+            modifierTimer = nil
+            // Use keyCode=-2 as convention for middle mouse button
+            onHotkeyRecorded?(-2, CGEventFlags())
+            stringValue = "鼠标中键"
+            stopRecording()
+            return
+        }
+
+        if event.type == .keyDown {
+            // Escape cancels recording
+            if event.keyCode == 53 {
+                stopRecording()
+                stringValue = placeholderString ?? ""
+                return
+            }
+
+            // Non-modifier key pressed: capture the combo (current modifiers + this key)
+            modifierTimer?.invalidate()
+            modifierTimer = nil
+
+            let keyCode = Int64(event.keyCode)
+            let cgFlags = convertModifiers(currentModifiers.union(event.modifierFlags))
+            onHotkeyRecorded?(keyCode, cgFlags)
+            stringValue = HotkeyConfig(keyCode: keyCode, modifiers: cgFlags).displayString
+            stopRecording()
+
+        } else if event.type == .flagsChanged {
+            // Track which modifiers are currently held
+            let mods = event.modifierFlags.intersection([.control, .option, .shift, .command])
+            // Always sync — including when all modifiers are released
+            currentModifiers = mods
+
+            if !mods.isEmpty {
+                // Modifier pressed — show live preview
+                stringValue = modifierDisplayString(mods) + "..."
+
+                // Start/reset a timer: if no key is pressed within 1s,
+                // accept as modifier-only hotkey (double-tap trigger)
+                modifierTimer?.invalidate()
+                let timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
+                    guard let self = self, self.isRecording else { return }
+                    let cgFlags = self.convertModifiers(self.currentModifiers)
+                    self.onHotkeyRecorded?(-1, cgFlags)
+                    let config = HotkeyConfig(keyCode: -1, modifiers: cgFlags)
+                    self.stringValue = config.displayString
+                    self.stopRecording()
+                }
+                RunLoop.current.add(timer, forMode: .common)
+                modifierTimer = timer
+            }
+            // When all modifiers are released without pressing a key,
+            // keep waiting (don't reset) — user may re-press
+        }
+    }
+
+    private func modifierDisplayString(_ flags: NSEvent.ModifierFlags) -> String {
+        var parts: [String] = []
+        if flags.contains(.control) { parts.append("⌃") }
+        if flags.contains(.option)  { parts.append("⌥") }
+        if flags.contains(.shift)   { parts.append("⇧") }
+        if flags.contains(.command) { parts.append("⌘") }
+        return parts.joined()
+    }
+
+    private func convertModifiers(_ nsFlags: NSEvent.ModifierFlags) -> CGEventFlags {
+        var cg = CGEventFlags()
+        if nsFlags.contains(.control)  { cg.insert(.maskControl) }
+        if nsFlags.contains(.option)   { cg.insert(.maskAlternate) }
+        if nsFlags.contains(.shift)    { cg.insert(.maskShift) }
+        if nsFlags.contains(.command)  { cg.insert(.maskCommand) }
+        return cg
+    }
+
+    /// Display a config's key combo.
+    func display(_ config: HotkeyConfig) {
+        stringValue = config.displayString
+    }
+}
+</file>
+
+<file path="Sources/OverlayPanel.swift">
+import Cocoa
+import SwiftUI
+
+/// A floating, non-activating panel at the bottom center of the screen.
+/// Shows real-time transcription text with a frosted glass appearance.
+/// Height is manually driven by SwiftUI content measurement; bottom edge stays anchored.
+class OverlayPanel {
+    private var panel: NSPanel?
+    private let viewModel = OverlayViewModel()
+    private let panelWidth: CGFloat = 500
+    private let minimalPanelWidth: CGFloat = 170
+    private let minimalPanelHeight: CGFloat = 40
+
+    /// When true, shows only the status icon (no text). Used in inline mode.
+    var minimal: Bool = false {
+        didSet { viewModel.minimal = minimal }
+    }
+
+    /// When true, shows local ASR indicator; otherwise cloud indicator.
+    var isLocal: Bool = false {
+        didSet { viewModel.isLocal = isLocal }
+    }
+
+    func show() {
+        if panel != nil {
+            resizePanelForMode()
+            viewModel.isVisible = true
+            panel?.orderFront(nil)
+            return
+        }
+
+        let currentWidth = minimal ? minimalPanelWidth : panelWidth
+        let initialHeight: CGFloat = minimal ? minimalPanelHeight : 60
+
+        let content = OverlayContentView(viewModel: viewModel)
+        let hosting = NSHostingView(rootView: content)
+        hosting.sizingOptions = []  // We drive panel sizing manually
+        hosting.frame = NSRect(x: 0, y: 0, width: currentWidth, height: initialHeight)
+
+        let p = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: currentWidth, height: initialHeight),
+            styleMask: [.nonactivatingPanel, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        p.isOpaque = false
+        p.backgroundColor = .clear
+        p.hasShadow = false
+        p.level = .floating
+        p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        p.isMovableByWindowBackground = false
+        p.hidesOnDeactivate = false
+        p.titlebarAppearsTransparent = true
+
+        hosting.autoresizingMask = [.width, .height]
+        p.contentView = hosting
+
+        // Position: bottom-center of screen
+        if let screen = NSScreen.main {
+            let screenFrame = screen.visibleFrame
+            let x = screenFrame.midX - currentWidth / 2
+            let y = screenFrame.minY + 60
+            p.setFrameOrigin(NSPoint(x: x, y: y))
+        }
+
+        // SwiftUI reports measured content height → we resize the panel (overlay mode only)
+        viewModel.onPanelHeightChange = { [weak self] height in
+            guard self?.minimal != true else { return }
+            self?.resizePanel(height: height)
+        }
+
+        p.orderFront(nil)
+        panel = p
+        viewModel.isVisible = true
+    }
+
+    func hide() {
+        viewModel.isVisible = false
+        panel?.orderOut(nil)
+    }
+
+    func updateText(_ text: String) {
+        viewModel.text = text
+    }
+
+    func setState(_ state: OverlayState) {
+        viewModel.state = state
+    }
+
+    func updateAudioLevel(_ level: Float) {
+        var levels = viewModel.audioLevels
+        levels.removeFirst()
+        levels.append(CGFloat(level))
+        viewModel.audioLevels = levels
+    }
+
+    /// Resize panel to match current mode (minimal vs full).
+    private func resizePanelForMode() {
+        guard let p = panel, let screen = NSScreen.main else { return }
+        let screenFrame = screen.visibleFrame
+        if minimal {
+            let x = screenFrame.midX - minimalPanelWidth / 2
+            let y = screenFrame.minY + 60
+            let newFrame = NSRect(x: x, y: y, width: minimalPanelWidth, height: minimalPanelHeight)
+            p.setFrame(newFrame, display: true)
+        } else {
+            // Restore overlay dimensions; SwiftUI preference will refine height later
+            let currentHeight = max(p.frame.height, 60)
+            let x = screenFrame.midX - panelWidth / 2
+            let y = screenFrame.minY + 60
+            let newFrame = NSRect(x: x, y: y, width: panelWidth, height: currentHeight)
+            p.setFrame(newFrame, display: true)
+        }
+    }
+
+    private func resizePanel(height: CGFloat) {
+        guard let p = panel, let screen = NSScreen.main else { return }
+        let screenFrame = screen.visibleFrame
+        let clamped = max(height, 50)
+        let x = screenFrame.midX - panelWidth / 2
+        let y = screenFrame.minY + 60
+        let newFrame = NSRect(x: x, y: y, width: panelWidth, height: clamped)
+        if p.frame != newFrame {
+            p.setFrame(newFrame, display: true)
+        }
+    }
+}
+
+// MARK: - State
+
+enum OverlayState {
+    case recording
+    case transcribing
+    case done
+    case error(String)
+}
+
+class OverlayViewModel: ObservableObject {
+    @Published var text: String = ""
+    @Published var state: OverlayState = .recording
+    @Published var isVisible: Bool = false
+    @Published var minimal: Bool = false
+    @Published var audioLevels: [CGFloat] = Array(repeating: 0, count: 5)
+    @Published var isLocal: Bool = false
+    /// Called from SwiftUI when the desired panel height changes.
+    var onPanelHeightChange: ((CGFloat) -> Void)?
+}
+
+// MARK: - SwiftUI View
+
+/// Measures the rendered height of text content.
+private struct TextHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+struct OverlayContentView: View {
+    @ObservedObject var viewModel: OverlayViewModel
+    @State private var textHeight: CGFloat = 20
+
+    // Non-text overhead: vertical padding (14*2) + status label (~15) + VStack spacing (2)
+    private let chromeHeight: CGFloat = 46
+
+    private var maxPanelHeight: CGFloat {
+        let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
+        return screenHeight - 200
+    }
+
+    /// Max height for the scrollable text area
+    private var maxScrollHeight: CGFloat {
+        maxPanelHeight - chromeHeight
+    }
+
+    private var cornerRadius: CGFloat {
+        viewModel.minimal ? 20 : 16
+    }
+
+    var body: some View {
+        Group {
+            if viewModel.minimal {
+                minimalPill
+            } else {
+                fullOverlay
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .opacity(0.55)
+                .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    // MARK: - Minimal pill (inline mode)
+
+    private var minimalPill: some View {
+        HStack(spacing: 8) {
+            minimalStatusIcon
+
+            Text(minimalStatusText)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundColor(.primary.opacity(0.85))
+                .lineLimit(1)
+
+            if case .recording = viewModel.state {
+                WaveformView(levels: viewModel.audioLevels)
+                    .frame(width: 28, height: 16)
+            }
+
+            providerIcon
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    private var minimalStatusIcon: some View {
+        Group {
+            switch viewModel.state {
+            case .recording:
+                Circle()
+                    .fill(.red)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: .red.opacity(0.6), radius: 4)
+            case .transcribing:
+                ProgressView()
+                    .scaleEffect(0.5)
+                    .frame(width: 8, height: 8)
+            case .done:
+                Image(systemName: "checkmark")
+                    .foregroundColor(.green)
+                    .font(.system(size: 10, weight: .bold))
+            case .error:
+                Image(systemName: "xmark")
+                    .foregroundColor(.red)
+                    .font(.system(size: 10, weight: .bold))
+            }
+        }
+    }
+
+    private var minimalStatusText: String {
+        switch viewModel.state {
+        case .recording: return "聆听中"
+        case .transcribing: return "识别中"
+        case .done: return "完成"
+        case .error(let msg):
+            if msg.isEmpty { return "出错" }
+            return String(msg.prefix(20))
+        }
+    }
+
+    // MARK: - Full overlay (paste mode)
+
+    private var fullOverlay: some View {
+        HStack(alignment: .top, spacing: 12) {
+            statusIcon
+                .frame(width: 24, height: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(statusLabel)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                    providerIcon
+                }
+
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: true) {
+                        Text(viewModel.text.isEmpty ? "正在聆听..." : viewModel.text)
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(GeometryReader { geo in
+                                Color.clear.preference(key: TextHeightKey.self, value: geo.size.height)
+                            })
+                            .id("bottom")
+                    }
+                    .frame(height: min(textHeight, maxScrollHeight))
+                    .onPreferenceChange(TextHeightKey.self) { height in
+                        textHeight = height
+                        let panelH = min(height + chromeHeight, maxPanelHeight)
+                        viewModel.onPanelHeightChange?(panelH)
+                    }
+                    .onChange(of: viewModel.text) {
+                        proxy.scrollTo("bottom", anchor: .bottom)
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .frame(width: 500)
+    }
+
+    private var statusIcon: some View {
+        Group {
+            switch viewModel.state {
+            case .recording:
+                Circle()
+                    .fill(.red)
+                    .frame(width: 12, height: 12)
+                    .overlay(
+                        Circle()
+                            .fill(.red.opacity(0.4))
+                            .frame(width: 20, height: 20)
+                    )
+            case .transcribing:
+                ProgressView()
+                    .scaleEffect(0.7)
+            case .done:
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.system(size: 18))
+            case .error:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 18))
+            }
+        }
+    }
+
+    private var providerIcon: some View {
+        Image(systemName: viewModel.isLocal ? "desktopcomputer" : "cloud.fill")
+            .font(.system(size: 9, weight: .medium))
+            .foregroundColor(.secondary.opacity(0.7))
+    }
+
+    private var statusLabel: String {
+        switch viewModel.state {
+        case .recording: return "🎙 录音中"
+        case .transcribing: return "⏳ 识别中"
+        case .done: return "✅ 完成"
+        case .error(let msg): return "❌ \(msg)"
+        }
+    }
+}
+
+// MARK: - Waveform Visualization
+
+struct WaveformView: View {
+    let levels: [CGFloat]
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(0..<levels.count, id: \.self) { i in
+                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                    .fill(.primary.opacity(0.6))
+                    .frame(width: 3, height: barHeight(for: levels[i]))
+                    .animation(.easeOut(duration: 0.12), value: levels[i])
+            }
+        }
+    }
+
+    private func barHeight(for level: CGFloat) -> CGFloat {
+        let minH: CGFloat = 3
+        let maxH: CGFloat = 16
+        return minH + (maxH - minH) * level
+    }
+}
+</file>
+
+<file path="Sources/HotkeyManager.swift">
+import Cocoa
+import Carbon.HIToolbox
+
+/// Hotkey activation mode.
+enum HotkeyMode: String {
+    case holdToTalk  // press-and-hold to record, release to stop
+    case handsFree   // press to start, press again to stop
+}
+
+/// A single hotkey configuration.
+struct HotkeyConfig: Equatable {
+    var keyCode: Int64           // virtual key code, -1 for modifier-only
+    var modifiers: CGEventFlags  // required modifiers
+
+    /// Human-readable label, e.g. "⌥Z" or "Double ⌥"
+    var displayString: String {
+        // Special case: middle mouse button
+        if keyCode == -2 { return "鼠标中键" }
+
+        var parts: [String] = []
+        if modifiers.contains(.maskControl)   { parts.append("⌃") }
+        if modifiers.contains(.maskAlternate)  { parts.append("⌥") }
+        if modifiers.contains(.maskShift)      { parts.append("⇧") }
+        if modifiers.contains(.maskCommand)    { parts.append("⌘") }
+
+        if keyCode >= 0 {
+            parts.append(HotkeyConfig.keyName(for: keyCode))
+        } else {
+            if parts.count == 1 {
+                return "双击\(parts[0])"
+            }
+        }
+        return parts.joined()
+    }
+
+    /// Default hold-to-talk: Option+Z
+    static let defaultHoldToTalk = HotkeyConfig(keyCode: 6, modifiers: .maskAlternate)
+    /// Default hands-free: none (middle mouse only)
+    static let defaultHandsFree: HotkeyConfig? = nil
+
+    // MARK: - Persistence
+
+    func save(prefix: String, to defaults: UserDefaults = .standard) {
+        defaults.set(keyCode, forKey: "\(prefix)_keycode")
+        defaults.set(modifiers.rawValue, forKey: "\(prefix)_modifiers")
+        defaults.set(true, forKey: "\(prefix)_enabled")
+    }
+
+    static func load(prefix: String, fallback: HotkeyConfig?, from defaults: UserDefaults = .standard) -> HotkeyConfig? {
+        guard defaults.bool(forKey: "\(prefix)_enabled") || defaults.object(forKey: "\(prefix)_enabled") == nil else {
+            return fallback
+        }
+        guard let _ = defaults.object(forKey: "\(prefix)_keycode") else {
+            return fallback
+        }
+        let code = defaults.object(forKey: "\(prefix)_keycode") as? Int64 ?? fallback?.keyCode ?? 6
+        let mods = defaults.object(forKey: "\(prefix)_modifiers") as? UInt64 ?? fallback?.modifiers.rawValue ?? 0
+        return HotkeyConfig(keyCode: code, modifiers: CGEventFlags(rawValue: mods))
+    }
+
+    static func clear(prefix: String, from defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: "\(prefix)_keycode")
+        defaults.removeObject(forKey: "\(prefix)_modifiers")
+        defaults.set(false, forKey: "\(prefix)_enabled")
+    }
+
+    // MARK: - Key name lookup
+
+    static func keyName(for keyCode: Int64) -> String {
+        let names: [Int64: String] = [
+            0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X",
+            8: "C", 9: "V", 11: "B", 12: "Q", 13: "W", 14: "E", 15: "R",
+            16: "Y", 17: "T", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6",
+            23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0",
+            30: "]", 31: "O", 32: "U", 33: "[", 34: "I", 35: "P",
+            36: "↩", 37: "L", 38: "J", 39: "'", 40: "K", 41: ";",
+            42: "\\", 43: ",", 44: "/", 45: "N", 46: "M", 47: ".",
+            48: "⇥", 49: "Space", 50: "`",
+            51: "⌫", 53: "Esc",
+            96: "F5", 97: "F6", 98: "F7", 99: "F3", 100: "F8",
+            101: "F9", 103: "F11", 105: "F13", 107: "F14",
+            109: "F10", 111: "F12", 113: "F15",
+            115: "Home", 116: "PgUp", 117: "Del", 118: "F4",
+            119: "End", 120: "F2", 121: "PgDn", 122: "F1",
+            123: "←", 124: "→", 125: "↓", 126: "↑",
+        ]
+        return names[keyCode] ?? "Key\(keyCode)"
+    }
+}
+
+// MARK: - HotkeyManager
+
+/// Manages two global hotkeys via CGEvent tap:
+///   - holdToTalk: press-and-hold to record, release any key to stop
+///   - handsFree:  press to start, press again to stop
+/// Middle mouse button is always hands-free toggle.
+class HotkeyManager {
+    var onRecordStart: ((_ mode: HotkeyMode) -> Void)?
+    var onRecordStop: (() -> Void)?
+
+    private(set) var holdToTalkConfig: HotkeyConfig?
+    private(set) var handsFreeConfig: HotkeyConfig?
+
+    private var eventTap: CFMachPort?
+    private(set) var isHolding = false
+    private(set) var activeMode: HotkeyMode?
+    var suspended = false  // suppress all hotkey handling (e.g. during config dialog)  // which mode triggered current recording
+
+    // Double-modifier detection (for modifier-only hotkeys)
+    private var lastModTapTime: [String: Date] = [:]  // "hold"/"free" -> last tap time
+    private let doubleTapInterval: TimeInterval = 0.35
+    private var currentModifiers: CGEventFlags = []
+
+    init() {
+        holdToTalkConfig = HotkeyConfig.load(prefix: "hotkey_hold", fallback: .defaultHoldToTalk)
+        handsFreeConfig = HotkeyConfig.load(prefix: "hotkey_free", fallback: nil)
+    }
+
+    func setHoldToTalk(_ config: HotkeyConfig?) {
+        holdToTalkConfig = config
+        if let c = config { c.save(prefix: "hotkey_hold") }
+        else { HotkeyConfig.clear(prefix: "hotkey_hold") }
+        resetState()
+        print("[HotkeyManager] Hold-to-talk: \(config?.displayString ?? "disabled")")
+    }
+
+    func setHandsFree(_ config: HotkeyConfig?) {
+        handsFreeConfig = config
+        if let c = config { c.save(prefix: "hotkey_free") }
+        else { HotkeyConfig.clear(prefix: "hotkey_free") }
+        resetState()
+        print("[HotkeyManager] Hands-free: \(config?.displayString ?? "middle mouse only")")
+    }
+
+    // MARK: - Install / Uninstall
+
+    func install() -> Bool {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+        if !AXIsProcessTrustedWithOptions(options) {
+            print("[HotkeyManager] Accessibility permission required.")
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "需要辅助功能权限"
+                alert.informativeText = "VoiceInput 需要辅助功能权限来注册全局快捷键。\n请在 系统设置 → 隐私与安全性 → 辅助功能 中授予权限。"
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "确定")
+                alert.runModal()
+            }
+        }
+
+        let mask: CGEventMask = (1 << CGEventType.keyDown.rawValue)
+            | (1 << CGEventType.keyUp.rawValue)
+            | (1 << CGEventType.flagsChanged.rawValue)
+            | (1 << CGEventType.otherMouseDown.rawValue)
+
+        let refcon = Unmanaged.passUnretained(self).toOpaque()
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: mask,
+            callback: HotkeyManager.eventTapCallback,
+            userInfo: refcon
+        ) else {
+            print("[HotkeyManager] Failed to create event tap.")
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "快捷键注册失败"
+                alert.informativeText = "无法创建全局快捷键。\n请确保已在 系统设置 → 隐私与安全性 → 辅助功能 中授予权限，然后重启应用。"
+                alert.alertStyle = .critical
+                alert.addButton(withTitle: "确定")
+                alert.runModal()
+            }
+            return false
+        }
+
+        eventTap = tap
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+        print("[HotkeyManager] Installed. Hold: \(holdToTalkConfig?.displayString ?? "disabled"), Free: \(handsFreeConfig?.displayString ?? "mouse only")")
+        return true
+    }
+
+    func uninstall() {
+        if let tap = eventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            eventTap = nil
+        }
+    }
+
+    func resetState() {
+        isHolding = false
+        activeMode = nil
+    }
+
+    // MARK: - Event Tap
+
+    private static let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon -> Unmanaged<CGEvent>? in
+        guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
+        let mgr = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
+
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let tap = mgr.eventTap {
+                CGEvent.tapEnable(tap: tap, enable: true)
+                print("[HotkeyManager] Re-enabled event tap")
+            }
+            return Unmanaged.passUnretained(event)
+        }
+
+        return mgr.handleEvent(type: type, event: event)
+    }
+
+    // MARK: - Event Dispatch
+
+    private func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        // Skip all handling while suspended (e.g. hotkey config dialog open)
+        if suspended { return Unmanaged.passUnretained(event) }
+        // Middle mouse button — always hands-free toggle
+        if type == .otherMouseDown && event.getIntegerValueField(.mouseEventButtonNumber) == 2 {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                if self.isHolding {
+                    self.isHolding = false
+                    self.activeMode = nil
+                    self.onRecordStop?()
+                } else {
+                    self.isHolding = true
+                    self.activeMode = .handsFree
+                    self.onRecordStart?(.handsFree)
+                }
+            }
+            return nil
+        }
+
+        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        let flags = event.flags
+
+        // --- If currently holding (recording), check for release ---
+        if isHolding && activeMode == .holdToTalk {
+            // keyUp of the hold key — stop (ignore modifiers, user may release in any order)
+            if type == .keyUp, let htc = holdToTalkConfig, htc.keyCode >= 0, keyCode == htc.keyCode {
+                isHolding = false
+                activeMode = nil
+                DispatchQueue.main.async { [weak self] in self?.onRecordStop?() }
+                return nil
+            }
+            // Modifier released during hold — stop if it was in hold config
+            if type == .flagsChanged, let htc = holdToTalkConfig {
+                if htc.keyCode < 0 || !Self.matchesMods(flags, htc.modifiers) {
+                    isHolding = false
+                    activeMode = nil
+                    DispatchQueue.main.async { [weak self] in self?.onRecordStop?() }
+                }
+                return Unmanaged.passUnretained(event)
+            }
+        }
+
+        // --- Check for hotkey activation ---
+        if type == .flagsChanged {
+            currentModifiers = flags.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
+            // Check modifier-only hotkeys (double-tap)
+            if let result = checkModifierOnly(holdToTalkConfig, tag: "hold", mode: .holdToTalk) { return result }
+            if let result = checkModifierOnly(handsFreeConfig, tag: "free", mode: .handsFree) { return result }
+            return Unmanaged.passUnretained(event)
+        }
+
+        if type == .keyDown {
+            let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+            if isRepeat { return isHolding ? nil : Unmanaged.passUnretained(event) }
+
+            // Check hold-to-talk
+            if let htc = holdToTalkConfig, htc.keyCode >= 0,
+               keyCode == htc.keyCode, Self.matchesMods(flags, htc.modifiers) {
+                if !isHolding {
+                    isHolding = true
+                    activeMode = .holdToTalk
+                    DispatchQueue.main.async { [weak self] in self?.onRecordStart?(.holdToTalk) }
+                }
+                return nil
+            }
+
+            // Check hands-free
+            if let hfc = handsFreeConfig, hfc.keyCode >= 0,
+               keyCode == hfc.keyCode, Self.matchesMods(flags, hfc.modifiers) {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    if self.isHolding {
+                        self.isHolding = false
+                        self.activeMode = nil
+                        self.onRecordStop?()
+                    } else {
+                        self.isHolding = true
+                        self.activeMode = .handsFree
+                        self.onRecordStart?(.handsFree)
+                    }
+                }
+                return nil
+            }
+        }
+
+        // keyUp for hands-free: consume but don't act
+        if type == .keyUp {
+            if let hfc = handsFreeConfig, hfc.keyCode >= 0, keyCode == hfc.keyCode {
+                return nil
+            }
+        }
+
+        return Unmanaged.passUnretained(event)
+    }
+
+    // MARK: - Modifier-only double-tap
+
+    private func checkModifierOnly(_ config: HotkeyConfig?, tag: String, mode: HotkeyMode) -> Unmanaged<CGEvent>? {
+        guard let cfg = config, cfg.keyCode == -1 else { return nil }
+
+        let targetMods = cfg.modifiers.intersection([.maskControl, .maskAlternate, .maskShift, .maskCommand])
+        let isPressed = currentModifiers == targetMods
+
+        if isPressed {
+            let now = Date()
+            if let last = lastModTapTime[tag], now.timeIntervalSince(last) < doubleTapInterval {
+                lastModTapTime[tag] = nil
+                // Double-tap detected
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    if mode == .holdToTalk {
+                        if !self.isHolding {
+                            self.isHolding = true
+                            self.activeMode = .holdToTalk
+                            self.onRecordStart?(.holdToTalk)
+                        }
+                    } else {
+                        if self.isHolding {
+                            self.isHolding = false
+                            self.activeMode = nil
+                            self.onRecordStop?()
+                        } else {
+                            self.isHolding = true
+                            self.activeMode = .handsFree
+                            self.onRecordStart?(.handsFree)
+                        }
+                    }
+                }
+            } else {
+                lastModTapTime[tag] = now
+            }
+        }
+        return nil  // don't consume modifier events
+    }
+
+    // MARK: - Helpers
+
+    static func matchesMods(_ flags: CGEventFlags, _ required: CGEventFlags) -> Bool {
+        let relevant: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
+        return flags.intersection(relevant) == required.intersection(relevant)
+    }
+}
+</file>
+
+<file path="Sources/VolcengineASR.swift">
+import Foundation
+import Compression
+
+/// Volcengine (火山引擎) 大模型流式语音识别 client — v3 bigmodel protocol.
+/// Supports real-time streaming: call startStreaming(), feed chunks via sendAudioChunk(), then endStreaming().
+/// Ref: https://www.volcengine.com/docs/6561/1354869
+class VolcengineASR: NSObject, ASRService, URLSessionWebSocketDelegate {
+    // MARK: - Configuration
+    private let appId: String       // X-Api-App-Key
+    private let token: String       // X-Api-Access-Key
+    private let resourceId: String  // X-Api-Resource-Id
+
+    /// 双向流式优化版 (only sends responses when results change)
+    private let endpoint = "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async"
+
+    // MARK: - Protocol constants (v3 bigmodel)
+    private let headerByte0: UInt8 = 0x11
+    // Message types
+    private let msgFullClient: UInt8  = 0b0001
+    private let msgAudioOnly: UInt8   = 0b0010
+    private let msgServerResp: UInt8  = 0b1001
+    private let msgServerError: UInt8 = 0b1111
+    // Flags
+    private let flagNoSeq: UInt8   = 0b0000
+    private let flagPosSeq: UInt8  = 0b0001
+    private let flagLast: UInt8    = 0b0010
+    private let flagNegSeq: UInt8  = 0b0011
+    // Serialization
+    private let serialNone: UInt8 = 0b0000
+    private let serialJSON: UInt8 = 0b0001
+    // Compression
+    private let compressNone: UInt8 = 0b0000
+    private let compressGzip: UInt8 = 0b0001
+
+    // MARK: - State
+    private let stateQueue = DispatchQueue(label: "volcengine.asr.state")
+    private var webSocket: URLSessionWebSocketTask?
+    private var urlSession: URLSession?
+    private var _isConnected = false
+    private var _pendingChunks: [Data] = []
+    private var lastReceivedText: String = ""
+    private var didEmitFinal = false
+    private var confirmedText: String = ""  // accumulated definite utterances
+
+    /// Called with partial transcription text (on main thread)
+    var onPartialResult: ((String) -> Void)?
+    /// Called with final transcription text (on main thread)
+    var onFinalResult: ((String) -> Void)?
+    /// Called on error (on main thread)
+    var onError: ((String) -> Void)?
+
+    /// Hotwords to boost recognition (max 100). Sent via corpus.context.
+    var hotwords: [String] = []
+
+    init(appId: String, token: String, cluster: String) {
+        self.appId = appId
+        self.token = token
+        if cluster.hasPrefix("volc.") {
+            self.resourceId = cluster
+        } else {
+            self.resourceId = "volc.seedasr.sauc.duration"
+        }
+        super.init()
+    }
+
+    // MARK: - Streaming API
+
+    /// Start a streaming session: connect WebSocket and send config.
+    func startStreaming() {
+        stateQueue.sync {
+            _isConnected = false
+            _pendingChunks = []
+        }
+        lastReceivedText = ""
+        didEmitFinal = false
+        confirmedText = ""
+
+        var components = URLComponents(string: endpoint)!
+        components.queryItems = [
+            URLQueryItem(name: "x-api-app-key", value: appId),
+            URLQueryItem(name: "x-api-access-key", value: token),
+            URLQueryItem(name: "x-api-resource-id", value: resourceId),
+            URLQueryItem(name: "x-api-connect-id", value: UUID().uuidString)
+        ]
+
+        guard let url = components.url else {
+            emitError("Invalid endpoint URL")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue(appId, forHTTPHeaderField: "X-Api-App-Key")
+        request.setValue(token, forHTTPHeaderField: "X-Api-Access-Key")
+        request.setValue(resourceId, forHTTPHeaderField: "X-Api-Resource-Id")
+        request.setValue(UUID().uuidString, forHTTPHeaderField: "X-Api-Connect-Id")
+
+        let delegateQueue = OperationQueue()
+        delegateQueue.maxConcurrentOperationCount = 1
+        urlSession = URLSession(
+            configuration: .default,
+            delegate: self,
+            delegateQueue: delegateQueue
+        )
+        webSocket = urlSession!.webSocketTask(with: request)
+        webSocket!.resume()
+
+        print("[VolcASR] Connecting...")
+    }
+
+    /// Send a chunk of PCM audio data (16kHz, 16-bit, mono). Call this repeatedly during recording.
+    func sendAudioChunk(_ pcmData: Data) {
+        guard !pcmData.isEmpty else { return }
+
+        let connected = stateQueue.sync {
+            if !_isConnected {
+                _pendingChunks.append(pcmData)
+                return false
+            }
+            return true
+        }
+
+        if connected {
+            sendAudioPacket(pcmData, isLast: false)
+        }
+    }
+
+    /// End the streaming session: send last (empty) packet to signal end of audio.
+    func endStreaming() {
+        let connected = stateQueue.sync {
+            if !_isConnected {
+                _pendingChunks.append(Data())  // empty = sentinel for "last"
+                return false
+            }
+            return true
+        }
+
+        if connected {
+            sendAudioPacket(Data(), isLast: true)
+            print("[VolcASR] Sent end-of-stream marker")
+        }
+    }
+
+    func cancel() {
+        stateQueue.sync {
+            _isConnected = false
+            _pendingChunks = []
+        }
+        webSocket?.cancel(with: .goingAway, reason: nil)
+        webSocket = nil
+        urlSession?.invalidateAndCancel()
+        urlSession = nil
+    }
+
+    // MARK: - URLSessionWebSocketDelegate
+
+    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
+                    didOpenWithProtocol protocol: String?) {
+        print("[VolcASR] ✅ WebSocket connected")
+        stateQueue.sync { _isConnected = true }
+
+        // 1) Send config
+        sendFullClientRequest()
+
+        // 2) Start receiving
+        receiveResponses()
+
+        // 3) Flush any buffered chunks
+        flushPendingChunks()
+    }
+
+    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
+                    didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+        stateQueue.sync { _isConnected = false }
+        let reasonStr = reason.flatMap { String(data: $0, encoding: .utf8) } ?? "none"
+        print("[VolcASR] WebSocket closed: code=\(closeCode.rawValue), reason=\(reasonStr)")
+
+        // bigmodel_async closes normally after last definite result
+        if closeCode == .normalClosure && !didEmitFinal {
+            didEmitFinal = true
+            let text = lastReceivedText
+            let logText = HistoryLogger.enabled ? text : "<redacted>"
+            print("[VolcASR] Final (on close): \(logText)")
+            DispatchQueue.main.async { self.onFinalResult?(text) }
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    didCompleteWithError error: Error?) {
+        stateQueue.sync { _isConnected = false }
+        if let error = error {
+            // Ignore cancellation errors from our own cancel() calls
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
+                print("[VolcASR] Session cancelled (ignored)")
+                return
+            }
+            print("[VolcASR] ❌ Connection error: \(error.localizedDescription)")
+            if let httpResp = task.response as? HTTPURLResponse {
+                print("[VolcASR] HTTP status: \(httpResp.statusCode)")
+            }
+            emitError("连接失败: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Internal: Send
+
+    private func flushPendingChunks() {
+        let chunks = stateQueue.sync {
+            let c = _pendingChunks
+            _pendingChunks = []
+            return c
+        }
+
+        for chunk in chunks {
+            if chunk.isEmpty {
+                // Sentinel: end of stream
+                sendAudioPacket(Data(), isLast: true)
+                print("[VolcASR] Sent end-of-stream marker (deferred)")
+            } else {
+                sendAudioPacket(chunk, isLast: false)
+            }
+        }
+    }
+
+    private func sendAudioPacket(_ pcmData: Data, isLast: Bool) {
+        let flags: UInt8 = isLast ? flagLast : flagNoSeq
+
+        let payload: Data
+        if pcmData.isEmpty {
+            payload = Data()
+        } else {
+            guard let compressed = gzipCompress(pcmData) else { return }
+            payload = compressed
+        }
+
+        let compression: UInt8 = pcmData.isEmpty ? compressNone : compressGzip
+
+        let msg = buildClientMessage(
+            msgType: msgAudioOnly,
+            flags: flags,
+            serialization: serialNone,
+            compression: compression,
+            payload: payload
+        )
+
+        webSocket?.send(.data(msg)) { error in
+            if let error = error {
+                print("[VolcASR] Audio send error: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func sendFullClientRequest() {
+        var config: [String: Any] = [
+            "user": [
+                "uid": "voiceinput_mac"
+            ],
+            "audio": [
+                "format": "pcm",
+                "rate": 16000,
+                "bits": 16,
+                "channel": 1,
+                "codec": "raw"
+            ],
+            "request": [
+                "model_name": "bigmodel",
+                "enable_itn": true,
+                "enable_punc": true,
+                "enable_ddc": false,
+                "enable_nonstream": true,
+                "result_type": "single",
+                "show_utterances": true
+            ]
+        ]
+
+        // Add hotwords via corpus.context (max 100)
+        if !hotwords.isEmpty {
+            let words = hotwords.prefix(100).map { ["word": $0] }
+            if let jsonData = try? JSONSerialization.data(withJSONObject: ["hotwords": words]),
+               let jsonStr = String(data: jsonData, encoding: .utf8) {
+                config["corpus"] = ["context": jsonStr]
+                print("[VolcASR] Hotwords: \(words.count) words")
+            }
+        }
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: config),
+              let compressed = gzipCompress(jsonData) else {
+            emitError("JSON序列化失败")
+            return
+        }
+
+        let msg = buildClientMessage(
+            msgType: msgFullClient,
+            flags: flagNoSeq,
+            serialization: serialJSON,
+            compression: compressGzip,
+            payload: compressed
+        )
+
+        webSocket?.send(.data(msg)) { [weak self] error in
+            if let error = error {
+                self?.emitError("发送配置失败: \(error.localizedDescription)")
+            } else {
+                print("[VolcASR] Config sent OK")
+            }
+        }
+    }
+
+    // MARK: - Receive
+
+    private func receiveResponses() {
+        webSocket?.receive { [weak self] result in
+            guard let self = self else { return }
+
+            switch result {
+            case .success(let message):
+                switch message {
+                case .data(let data):
+                    self.parseServerResponse(data)
+                case .string(let text):
+                    let logText = HistoryLogger.enabled ? text : "<redacted>"
+                    print("[VolcASR] Text: \(logText)")
+                @unknown default: break
+                }
+                self.receiveResponses()
+
+            case .failure(let error):
+                let msg = error.localizedDescription
+                if !msg.contains("cancelled") && !msg.contains("not connected") {
+                    print("[VolcASR] Receive error: \(msg)")
+                }
+            }
+        }
+    }
+
+    private func parseServerResponse(_ data: Data) {
+        guard data.count >= 4 else { return }
+
+        let byte1 = data[1]
+        let byte2 = data[2]
+        let msgType = byte1 >> 4
+        let flags = byte1 & 0x0F
+        let compressionType = byte2 & 0x0F
+
+        // Error
+        if msgType == msgServerError {
+            guard data.count >= 12 else {
+                emitError("服务器错误 (数据不完整)")
+                return
+            }
+            let errorCode = data[4..<8].withUnsafeBytes { UInt32(bigEndian: $0.load(as: UInt32.self)) }
+            let errorSize = Int(data[8..<12].withUnsafeBytes { UInt32(bigEndian: $0.load(as: UInt32.self)) })
+            let errorMsg: String
+            if data.count >= 12 + errorSize {
+                errorMsg = String(data: data[12..<(12 + errorSize)], encoding: .utf8) ?? "Unknown"
+            } else {
+                errorMsg = "Unknown"
+            }
+            print("[VolcASR] ❌ Error: code=\(errorCode), msg=\(errorMsg)")
+            emitError("服务器错误 (\(errorCode)): \(errorMsg)")
+            return
+        }
+
+        // Server response
+        guard msgType == msgServerResp else { return }
+
+        var offset = 4
+
+        var sequence: Int32 = 0
+        if (flags & 0b0001) != 0 {
+            guard data.count >= offset + 4 else { return }
+            sequence = data[offset..<(offset+4)].withUnsafeBytes { Int32(bigEndian: $0.load(as: Int32.self)) }
+            offset += 4
+        }
+
+        let isLast = (flags & 0b0010) != 0
+        if flags == flagNegSeq { sequence = -abs(sequence) }
+
+        guard data.count >= offset + 4 else { return }
+        let payloadSize = Int(data[offset..<(offset+4)].withUnsafeBytes {
+            UInt32(bigEndian: $0.load(as: UInt32.self))
+        })
+        offset += 4
+
+        guard data.count >= offset + payloadSize else { return }
+        let payload = data[offset..<(offset + payloadSize)]
+
+        let jsonData: Data
+        if compressionType == compressGzip {
+            guard let d = gzipDecompress(Data(payload)) else { return }
+            jsonData = d
+        } else {
+            jsonData = Data(payload)
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else { return }
+
+        guard let result = json["result"] as? [String: Any] else { return }
+
+        let text = result["text"] as? String ?? ""
+        if text.isEmpty { return }
+
+        // Check for definite utterances and accumulate them
+        var hasDefinite = false
+        if let utterances = result["utterances"] as? [[String: Any]] {
+            for u in utterances {
+                if u["definite"] as? Bool == true {
+                    hasDefinite = true
+                    let uText = u["text"] as? String ?? ""
+                    if !uText.isEmpty {
+                        confirmedText += uText
+                    }
+                }
+            }
+        }
+
+        // Build full display text: confirmed sentences + current partial
+        let fullText: String
+        if hasDefinite {
+            fullText = confirmedText
+        } else {
+            fullText = confirmedText + text
+        }
+
+        if isLast || sequence < 0 {
+            didEmitFinal = true
+            lastReceivedText = fullText
+            let logText1 = HistoryLogger.enabled ? fullText : "<redacted>"
+            print("[VolcASR] Final: \(logText1)")
+            DispatchQueue.main.async { self.onFinalResult?(fullText) }
+            webSocket?.cancel(with: .normalClosure, reason: nil)
+        } else {
+            lastReceivedText = fullText
+            let logText2 = HistoryLogger.enabled ? fullText : "<redacted>"
+            print("[VolcASR] \(hasDefinite ? "confirmed" : "partial") \(logText2)")
+            DispatchQueue.main.async { self.onPartialResult?(fullText) }
+        }
+    }
+
+    // MARK: - Build Client Message
+
+    private func buildClientMessage(
+        msgType: UInt8, flags: UInt8,
+        serialization: UInt8, compression: UInt8,
+        payload: Data
+    ) -> Data {
+        var msg = Data(capacity: 8 + payload.count)
+        msg.append(headerByte0)
+        msg.append((msgType << 4) | flags)
+        msg.append((serialization << 4) | compression)
+        msg.append(0x00)
+        var size = UInt32(payload.count).bigEndian
+        msg.append(Data(bytes: &size, count: 4))
+        msg.append(payload)
+        return msg
+    }
+
+    // MARK: - Gzip
+
+    private func gzipCompress(_ data: Data) -> Data? {
+        guard let deflated = data.withUnsafeBytes({ (srcPtr: UnsafeRawBufferPointer) -> Data? in
+            let srcSize = data.count
+            let dstSize = srcSize + 512
+            let dst = UnsafeMutablePointer<UInt8>.allocate(capacity: dstSize)
+            defer { dst.deallocate() }
+            let result = compression_encode_buffer(
+                dst, dstSize,
+                srcPtr.bindMemory(to: UInt8.self).baseAddress!, srcSize,
+                nil, COMPRESSION_ZLIB
+            )
+            guard result > 0 else { return nil }
+            return Data(bytes: dst, count: result)
+        }) else { return nil }
+
+        var gzip = Data()
+        gzip.append(contentsOf: [0x1f, 0x8b, 0x08, 0x00])
+        gzip.append(contentsOf: [0x00, 0x00, 0x00, 0x00])
+        gzip.append(contentsOf: [0x00, 0x03])
+        gzip.append(deflated)
+        var crc = crc32Checksum(data)
+        gzip.append(Data(bytes: &crc, count: 4))
+        var sz = UInt32(data.count)
+        gzip.append(Data(bytes: &sz, count: 4))
+        return gzip
+    }
+
+    private func gzipDecompress(_ data: Data) -> Data? {
+        guard data.count > 18 else { return nil }
+        var offset = 10
+        let flg = data[3]
+        if flg & 0x04 != 0 {
+            guard data.count > offset + 2 else { return nil }
+            let xlen = Int(data[offset]) | (Int(data[offset+1]) << 8)
+            offset += 2 + xlen
+        }
+        if flg & 0x08 != 0 { while offset < data.count && data[offset] != 0 { offset += 1 }; offset += 1 }
+        if flg & 0x10 != 0 { while offset < data.count && data[offset] != 0 { offset += 1 }; offset += 1 }
+        if flg & 0x02 != 0 { offset += 2 }
+
+        let end = data.count - 8
+        guard offset < end else { return nil }
+        let deflated = data[offset..<end]
+
+        return deflated.withUnsafeBytes { (srcPtr: UnsafeRawBufferPointer) -> Data? in
+            let dstSize = deflated.count * 10 + 4096
+            let dst = UnsafeMutablePointer<UInt8>.allocate(capacity: dstSize)
+            defer { dst.deallocate() }
+            let result = compression_decode_buffer(
+                dst, dstSize,
+                srcPtr.bindMemory(to: UInt8.self).baseAddress!, deflated.count,
+                nil, COMPRESSION_ZLIB
+            )
+            guard result > 0 else { return nil }
+            return Data(bytes: dst, count: result)
+        }
+    }
+
+    private func crc32Checksum(_ data: Data) -> UInt32 {
+        var crc: UInt32 = 0xFFFFFFFF
+        let poly: UInt32 = 0xEDB88320
+        for byte in data {
+            crc ^= UInt32(byte)
+            for _ in 0..<8 {
+                crc = (crc & 1 != 0) ? ((crc >> 1) ^ poly) : (crc >> 1)
+            }
+        }
+        return crc ^ 0xFFFFFFFF
+    }
+
+    private func emitError(_ msg: String) {
+        print("[VolcASR] ❌ \(msg)")
+        DispatchQueue.main.async { self.onError?(msg) }
+    }
+}
+</file>
+
+<file path="Sources/AppDelegate.swift">
+import Cocoa
+import Carbon.HIToolbox
+
+/// Main application controller.
+/// Manages the menu bar icon, global hotkey, and coordinates recording → ASR → paste.
+class AppDelegate: NSObject, NSApplicationDelegate {
+    private var statusItem: NSStatusItem!
+    private let overlay = OverlayPanel()
+    private let recorder = AudioRecorder()
+    private let inlineInjector = InlineTextInjector()
+    private var asr: ASRService?
+    private var hotkeyManager: HotkeyManager!
+    private var previousApp: NSRunningApplication?
+    private var modeMenuItem: NSMenuItem!
+    private var providerMenuItem: NSMenuItem!
+    private var privacyMenuItem: NSMenuItem!
+    private var holdHotkeyMenuItem: NSMenuItem!
+    private var freeHotkeyMenuItem: NSMenuItem!
+    private var llmMenuItem: NSMenuItem!
+
+    private var isInlineMode: Bool {
+        get { UserDefaults.standard.bool(forKey: "inline_mode") }
+        set { UserDefaults.standard.set(newValue, forKey: "inline_mode") }
+    }
+
+    // API credentials (stored in Keychain)
+    private var appId: String {
+        get { KeychainHelper.load(key: "volcengine_app_id") ?? "" }
+        set { KeychainHelper.save(key: "volcengine_app_id", value: newValue) }
+    }
+    private var token: String {
+        get { KeychainHelper.load(key: "volcengine_token") ?? "" }
+        set { KeychainHelper.save(key: "volcengine_token", value: newValue) }
+    }
+    private var cluster: String {
+        get { UserDefaults.standard.string(forKey: "volcengine_cluster") ?? "volc.seedasr.sauc.duration" }
+        set { UserDefaults.standard.set(newValue, forKey: "volcengine_cluster") }
+    }
+
+    /// ASR provider: "volcengine" or "local"
+    private var asrProvider: String {
+        get { UserDefaults.standard.string(forKey: "asr_provider") ?? "volcengine" }
+        set { UserDefaults.standard.set(newValue, forKey: "asr_provider") }
+    }
+
+    private var localASRHost: String {
+        get { UserDefaults.standard.string(forKey: "local_asr_host") ?? "127.0.0.1" }
+        set { UserDefaults.standard.set(newValue, forKey: "local_asr_host") }
+    }
+
+    private var localASRPort: UInt16 {
+        get {
+            let val = UserDefaults.standard.integer(forKey: "local_asr_port")
+            return val > 0 ? UInt16(val) : 8000
+        }
+        set { UserDefaults.standard.set(Int(newValue), forKey: "local_asr_port") }
+    }
+
+    private var privacyMode: Bool {
+        get { UserDefaults.standard.bool(forKey: "privacy_mode") }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "privacy_mode")
+            applyPrivacyMode()
+        }
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        DataPaths.ensureDataDirectory()
+        migrateCredentialsToKeychain()
+        applyPrivacyMode()
+        hotkeyManager = HotkeyManager()
+        setupMenuBar()
+        setupHotkeyManager()
+        print("[AppDelegate] VoiceInput ready.")
+
+        if asrProvider != "local" && (appId.isEmpty || token.isEmpty) {
+            print("[AppDelegate] ⚠️ API credentials not configured. Use the menu bar to set them.")
+        }
+    }
+
+    // MARK: - Menu Bar
+
+    private func setupMenuBar() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "VoiceInput")
+            button.image?.size = NSSize(width: 16, height: 16)
+        }
+
+        let menu = NSMenu()
+        menu.addItem(withTitle: "VoiceInput", action: nil, keyEquivalent: "")
+        menu.addItem(NSMenuItem.separator())
+
+        modeMenuItem = NSMenuItem(title: isInlineMode ? "切换到浮窗模式" : "切换到内联模式", action: #selector(toggleMode), keyEquivalent: "")
+        modeMenuItem.target = self
+        menu.addItem(modeMenuItem)
+
+        providerMenuItem = NSMenuItem(
+            title: asrProvider == "local" ? "切换到云端识别" : "切换到本地识别",
+            action: #selector(toggleProvider), keyEquivalent: "")
+        providerMenuItem.target = self
+        menu.addItem(providerMenuItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let configItem = NSMenuItem(title: "设置火山引擎 API Key...", action: #selector(showApiKeyDialog), keyEquivalent: ",")
+        configItem.target = self
+        menu.addItem(configItem)
+
+        let localConfigItem = NSMenuItem(title: "设置本地识别服务...", action: #selector(showLocalASRDialog), keyEquivalent: "")
+        localConfigItem.target = self
+        menu.addItem(localConfigItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let llmConfigItem = NSMenuItem(title: "设置 LLM 后处理...", action: #selector(showLLMSettingsDialog), keyEquivalent: "")
+        llmConfigItem.target = self
+        menu.addItem(llmConfigItem)
+
+        llmMenuItem = NSMenuItem(title: "LLM 后处理", action: #selector(toggleLLMPost), keyEquivalent: "")
+        llmMenuItem.target = self
+        llmMenuItem.state = LLMPostProcessor.enabled ? .on : .off
+        menu.addItem(llmMenuItem)
+
+        let llmPromptItem = NSMenuItem(title: "编辑 LLM 提示词...", action: #selector(showLLMPromptEditor), keyEquivalent: "")
+        llmPromptItem.target = self
+        menu.addItem(llmPromptItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let replacementsItem = NSMenuItem(title: "编辑词汇替换表...", action: #selector(openReplacementsFile), keyEquivalent: "")
+        replacementsItem.target = self
+        menu.addItem(replacementsItem)
+
+        let hotwordsItem = NSMenuItem(title: "编辑热词表...", action: #selector(openHotwordsFile), keyEquivalent: "")
+        hotwordsItem.target = self
+        menu.addItem(hotwordsItem)
+
+        let historyItem = NSMenuItem(title: "查看输入历史...", action: #selector(openHistoryFile), keyEquivalent: "")
+        historyItem.target = self
+        menu.addItem(historyItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        privacyMenuItem = NSMenuItem(title: "隐私模式", action: #selector(togglePrivacy), keyEquivalent: "")
+        privacyMenuItem.target = self
+        privacyMenuItem.state = privacyMode ? .on : .off
+        menu.addItem(privacyMenuItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let holdLabel = hotkeyManager.holdToTalkConfig?.displayString ?? "未设置"
+        holdHotkeyMenuItem = NSMenuItem(
+            title: "按住说话快捷键: \(holdLabel)",
+            action: #selector(showHoldHotkeyDialog), keyEquivalent: "")
+        holdHotkeyMenuItem.target = self
+        menu.addItem(holdHotkeyMenuItem)
+
+        let freeLabel = hotkeyManager.handsFreeConfig?.displayString ?? "鼠标中键"
+        freeHotkeyMenuItem = NSMenuItem(
+            title: "免提快捷键: \(freeLabel)",
+            action: #selector(showFreeHotkeyDialog), keyEquivalent: "")
+        freeHotkeyMenuItem.target = self
+        menu.addItem(freeHotkeyMenuItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let quitItem = NSMenuItem(title: "退出", action: #selector(quit), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+
+        statusItem.menu = menu
+    }
+
+    @objc private func showApiKeyDialog() {
+        let alert = NSAlert()
+        alert.messageText = "火山引擎设置"
+        alert.informativeText = "请输入 App ID、Access Token 和 Resource ID\n(控制台-应用管理中获取)"
+
+        let stackView = NSStackView(frame: NSRect(x: 0, y: 0, width: 300, height: 92))
+        stackView.orientation = .vertical
+        stackView.spacing = 8
+
+        let appIdField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        appIdField.placeholderString = "App ID (如: 5956285917)"
+        appIdField.stringValue = appId
+        stackView.addArrangedSubview(appIdField)
+
+        let tokenField = EditableSecureTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        tokenField.placeholderString = "Access Token"
+        tokenField.stringValue = token
+        stackView.addArrangedSubview(tokenField)
+
+        let clusterField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        clusterField.placeholderString = "Resource ID (如: volc.seedasr.sauc.duration)"
+        clusterField.stringValue = cluster
+        stackView.addArrangedSubview(clusterField)
+
+        alert.accessoryView = stackView
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "取消")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            appId = appIdField.stringValue
+            token = tokenField.stringValue
+            cluster = clusterField.stringValue
+            print("[AppDelegate] Credentials saved (resourceId=\(cluster))")
+        }
+    }
+
+    @objc private func openReplacementsFile() {
+        DataPaths.ensureFileExists(
+            at: DataPaths.replacementsFile,
+            defaultContent: "# 词汇替换表\n# 格式: 原词:替换词 或 原词→替换词\n# 每行一条，#开头为注释\n"
+        )
+        NSWorkspace.shared.open(DataPaths.replacementsFile)
+    }
+
+    @objc private func openHotwordsFile() {
+        DataPaths.ensureFileExists(
+            at: DataPaths.hotwordsFile,
+            defaultContent: "# 热词表 (每行一个，最多100个，#开头为注释)\n# 用于提升人名、产品名等专有词汇的识别准确率\n"
+        )
+        NSWorkspace.shared.open(DataPaths.hotwordsFile)
+    }
+
+    private func loadHotwords() -> [String] {
+        guard let content = try? String(contentsOf: DataPaths.hotwordsFile, encoding: .utf8) else {
+            return []
+        }
+        return content.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
+    }
+
+    @objc private func openHistoryFile() {
+        DataPaths.ensureFileExists(at: DataPaths.historyFile)
+        NSWorkspace.shared.open(DataPaths.historyFile)
+    }
+
+    @objc private func toggleMode() {
+        guard !recorder.recording else {
+            print("[AppDelegate] Cannot switch mode while recording")
+            return
+        }
+        isInlineMode.toggle()
+        modeMenuItem.title = isInlineMode ? "切换到浮窗模式" : "切换到内联模式"
+        print("[AppDelegate] Mode: \(isInlineMode ? "inline" : "overlay")")
+    }
+
+    @objc private func toggleProvider() {
+        guard !recorder.recording else {
+            print("[AppDelegate] Cannot switch provider while recording")
+            return
+        }
+        asrProvider = (asrProvider == "local") ? "volcengine" : "local"
+        providerMenuItem.title = asrProvider == "local" ? "切换到云端识别" : "切换到本地识别"
+        print("[AppDelegate] ASR provider: \(asrProvider)")
+    }
+
+    @objc private func togglePrivacy() {
+        privacyMode.toggle()
+        privacyMenuItem.state = privacyMode ? .on : .off
+        print("[AppDelegate] Privacy mode: \(privacyMode ? "ON" : "OFF")")
+    }
+
+    private func applyPrivacyMode() {
+        HistoryLogger.enabled = !privacyMode
+    }
+
+    @objc private func showLLMSettingsDialog() {
+        let alert = NSAlert()
+        alert.messageText = "LLM 后处理设置"
+        alert.informativeText = "配置 LLM API 以优化语音识别结果（标点、断句、去结巴等）"
+
+        let stackView = NSStackView(frame: NSRect(x: 0, y: 0, width: 350, height: 92))
+        stackView.orientation = .vertical
+        stackView.spacing = 8
+
+        let baseURLField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 350, height: 24))
+        baseURLField.placeholderString = "Base URL (如: https://api.openai.com/v1)"
+        baseURLField.stringValue = LLMPostProcessor.baseURL
+        stackView.addArrangedSubview(baseURLField)
+
+        let modelField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 350, height: 24))
+        modelField.placeholderString = "模型名称 (如: gpt-4o-mini)"
+        modelField.stringValue = LLMPostProcessor.model
+        stackView.addArrangedSubview(modelField)
+
+        let keyField = EditableSecureTextField(frame: NSRect(x: 0, y: 0, width: 350, height: 24))
+        keyField.placeholderString = "API Key"
+        keyField.stringValue = LLMPostProcessor.apiKey
+        stackView.addArrangedSubview(keyField)
+
+        alert.accessoryView = stackView
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "测试")
+        alert.addButton(withTitle: "取消")
+
+        // 循环处理：点击「测试」后显示结果，对话框保持打开
+        var shouldContinue = true
+        while shouldContinue {
+            let result = alert.runModal()
+            switch result {
+            case .alertFirstButtonReturn:
+                // 保存
+                LLMPostProcessor.baseURL = baseURLField.stringValue
+                LLMPostProcessor.model = modelField.stringValue
+                LLMPostProcessor.apiKey = keyField.stringValue
+                print("[AppDelegate] LLM 设置已保存 (model=\(LLMPostProcessor.model))")
+                shouldContinue = false
+
+            case .alertSecondButtonReturn:
+                // 测试连接
+                let testBase = baseURLField.stringValue
+                let testModel = modelField.stringValue
+                let testKey = keyField.stringValue
+
+                guard !testBase.isEmpty, !testModel.isEmpty, !testKey.isEmpty else {
+                    let warn = NSAlert()
+                    warn.messageText = "❌ 配置不完整"
+                    warn.informativeText = "请填写 Base URL、模型名称和 API Key"
+                    warn.runModal()
+                    continue
+                }
+
+                // 使用信号量等待异步结果
+                let semaphore = DispatchSemaphore(value: 0)
+                var testSuccess = false
+                var testMessage = ""
+                LLMPostProcessor.testConnection(baseURL: testBase, model: testModel, apiKey: testKey) { success, message in
+                    testSuccess = success
+                    testMessage = message
+                    semaphore.signal()
+                }
+
+                // 在后台等待，避免阻塞主线程 UI
+                DispatchQueue.global().async {
+                    semaphore.wait()
+                    DispatchQueue.main.async {
+                        let resultAlert = NSAlert()
+                        if testSuccess {
+                            resultAlert.messageText = "✅ 连接成功"
+                            resultAlert.informativeText = "模型回复: \(testMessage)"
+                        } else {
+                            resultAlert.messageText = "❌ 连接失败"
+                            resultAlert.informativeText = testMessage
+                        }
+                        resultAlert.runModal()
+                    }
+                }
+                // 继续循环，回到主对话框
+                continue
+
+            default:
+                // 取消
+                shouldContinue = false
+            }
+        }
+    }
+
+    @objc private func toggleLLMPost() {
+        LLMPostProcessor.enabled.toggle()
+        llmMenuItem.state = LLMPostProcessor.enabled ? .on : .off
+        print("[AppDelegate] LLM 后处理: \(LLMPostProcessor.enabled ? "ON" : "OFF")")
+    }
+
+    @objc private func showLLMPromptEditor() {
+        let alert = NSAlert()
+        alert.messageText = "编辑 LLM 提示词"
+        alert.informativeText = "自定义系统提示词，用于指导 LLM 如何优化语音识别结果"
+
+        // 使用 NSTextView + NSScrollView 实现多行编辑
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 450, height: 250))
+        scrollView.hasVerticalScroller = true
+        scrollView.borderType = .bezelBorder
+
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 450, height: 250))
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.allowsUndo = true
+        textView.font = NSFont.systemFont(ofSize: 13)
+        textView.isRichText = false
+        textView.string = LLMPostProcessor.systemPrompt
+        textView.autoresizingMask = [.width, .height]
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.textContainer?.widthTracksTextView = true
+
+        scrollView.documentView = textView
+        alert.accessoryView = scrollView
+
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "重置为默认")
+        alert.addButton(withTitle: "取消")
+
+        var shouldContinue = true
+        while shouldContinue {
+            let result = alert.runModal()
+            switch result {
+            case .alertFirstButtonReturn:
+                // 保存
+                let newPrompt = textView.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                if newPrompt.isEmpty || newPrompt == LLMPostProcessor.defaultSystemPrompt {
+                    LLMPostProcessor.resetSystemPrompt()
+                    print("[AppDelegate] LLM 提示词已重置为默认")
+                } else {
+                    LLMPostProcessor.systemPrompt = newPrompt
+                    print("[AppDelegate] LLM 提示词已保存")
+                }
+                shouldContinue = false
+
+            case .alertSecondButtonReturn:
+                // 重置为默认
+                textView.string = LLMPostProcessor.defaultSystemPrompt
+                // 继续循环，保持对话框打开
+                continue
+
+            default:
+                // 取消
+                shouldContinue = false
+            }
+        }
+    }
+
+    @objc private func showLocalASRDialog() {
+        let alert = NSAlert()
+        alert.messageText = "本地识别服务设置"
+        alert.informativeText = "请输入本地 ASR 服务的地址和端口"
+
+        let stackView = NSStackView(frame: NSRect(x: 0, y: 0, width: 300, height: 60))
+        stackView.orientation = .vertical
+        stackView.spacing = 8
+
+        let hostField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        hostField.placeholderString = "Host (如: 127.0.0.1)"
+        hostField.stringValue = localASRHost
+        stackView.addArrangedSubview(hostField)
+
+        let portField = EditableTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        portField.placeholderString = "Port (如: 8000)"
+        portField.stringValue = String(localASRPort)
+        stackView.addArrangedSubview(portField)
+
+        alert.accessoryView = stackView
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "取消")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            localASRHost = hostField.stringValue.isEmpty ? "127.0.0.1" : hostField.stringValue
+            if let port = UInt16(portField.stringValue), port > 0 {
+                localASRPort = port
+            }
+            print("[AppDelegate] Local ASR: \(localASRHost):\(localASRPort)")
+        }
+    }
+
+    @objc private func quit() {
+        NSApplication.shared.terminate(nil)
+    }
+
+    // MARK: - Hotkey Manager
+
+    private func setupHotkeyManager() {
+        hotkeyManager = HotkeyManager()
+        hotkeyManager.onRecordStart = { [weak self] mode in
+            guard let self = self, !self.recorder.recording else { return }
+            self.startRecording()
+        }
+        hotkeyManager.onRecordStop = { [weak self] in
+            guard let self = self, self.recorder.recording else { return }
+            self.stopRecording()
+        }
+        if !hotkeyManager.install() {
+            holdHotkeyMenuItem.title = "按住说话快捷键: ⚠️ 需授权"
+            freeHotkeyMenuItem.title = "免提快捷键: ⚠️ 需授权"
+        }
+    }
+
+    @objc private func showHoldHotkeyDialog() {
+        showHotkeyConfigDialog(
+            title: "设置“按住说话”快捷键",
+            info: "按住开始录音，松开停止。\n点击下方输入框，然后按下快捷键组合。",
+            current: hotkeyManager.holdToTalkConfig
+        ) { [weak self] config in
+            self?.hotkeyManager.setHoldToTalk(config)
+            self?.holdHotkeyMenuItem.title = "按住说话快捷键: \(config?.displayString ?? "未设置")"
+        }
+    }
+
+    @objc private func showFreeHotkeyDialog() {
+        showHotkeyConfigDialog(
+            title: "设置“免提”快捷键",
+            info: "按一次开始录音，再按一次停止。\n鼠标中键始终可用。\n点击下方输入框，然后按下快捷键组合。",
+            current: hotkeyManager.handsFreeConfig
+        ) { [weak self] config in
+            self?.hotkeyManager.setHandsFree(config)
+            self?.freeHotkeyMenuItem.title = "免提快捷键: \(config?.displayString ?? "鼠标中键")"
+        }
+    }
+
+    private func showHotkeyConfigDialog(title: String, info: String, current: HotkeyConfig?,
+                                         onSave: @escaping (HotkeyConfig?) -> Void) {
+        // Suspend hotkey handling so key presses go to the recorder, not the app
+        hotkeyManager.suspended = true
+
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = info
+
+        let recorder = HotkeyRecorderView(frame: NSRect(x: 0, y: 0, width: 250, height: 28))
+        if let c = current { recorder.display(c) }
+
+        var pendingKeyCode: Int64?
+        var pendingModifiers: CGEventFlags?
+
+        recorder.onHotkeyRecorded = { keyCode, modifiers in
+            pendingKeyCode = keyCode
+            pendingModifiers = modifiers
+        }
+
+        alert.accessoryView = recorder
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "取消")
+
+        let result = alert.runModal()
+        hotkeyManager.suspended = false
+
+        if result == .alertFirstButtonReturn,
+           let kc = pendingKeyCode, let mods = pendingModifiers {
+            let config = HotkeyConfig(keyCode: kc, modifiers: mods)
+            onSave(config)
+        }
+    }
+
+    private func startRecording() {
+        // Cancel any previous ASR session to prevent stale results
+        asr?.onError = nil
+        asr?.onFinalResult = nil
+        asr?.onPartialResult = nil
+        asr?.cancel()
+        asr = nil
+
+        // Capture the frontmost app BEFORE anything else
+        previousApp = NSWorkspace.shared.frontmostApplication
+        print("[AppDelegate] Captured target app: \(previousApp?.localizedName ?? "unknown")")
+
+        // Create the appropriate ASR service
+        if asrProvider == "local" {
+            asr = LocalASR(host: localASRHost, port: localASRPort)
+        } else {
+            guard !appId.isEmpty, !token.isEmpty else {
+                print("[AppDelegate] Credentials not set!")
+                hotkeyManager.resetState()
+                showApiKeyDialog()
+                return
+            }
+            let volcASR = VolcengineASR(appId: appId, token: token, cluster: cluster)
+            volcASR.hotwords = loadHotwords()
+            asr = volcASR
+        }
+
+        if isInlineMode {
+            setupInlineModeCallbacks()
+        } else {
+            setupOverlayModeCallbacks()
+        }
+
+        // Start ASR connection
+        asr?.startStreaming()
+
+        // Stream audio chunks to ASR in real-time
+        recorder.onAudioChunk = { [weak self] chunk in
+            self?.asr?.sendAudioChunk(chunk)
+        }
+
+        // Feed audio levels to overlay waveform (inline mode only)
+        if isInlineMode {
+            recorder.onAudioLevel = { [weak self] level in
+                DispatchQueue.main.async {
+                    self?.overlay.updateAudioLevel(level)
+                }
+            }
+        } else {
+            recorder.onAudioLevel = nil
+        }
+
+        do {
+            try recorder.start()
+        } catch {
+            print("[AppDelegate] Failed to start recording: \(error)")
+            asr?.cancel()
+            hotkeyManager.resetState()
+            return
+        }
+
+        // Show overlay (minimal in inline mode)
+        overlay.minimal = isInlineMode
+        overlay.isLocal = (asrProvider == "local")
+        overlay.setState(.recording)
+        overlay.updateText("")
+        overlay.show()
+
+        if isInlineMode {
+            inlineInjector.reset()
+        }
+
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "mic.badge.plus", accessibilityDescription: "Recording")
+        }
+    }
+
+    private func setupOverlayModeCallbacks() {
+        asr?.onPartialResult = { [weak self] (text: String) in
+            self?.overlay.updateText(text)
+        }
+
+        asr?.onFinalResult = { [weak self] (text: String) in
+            let replacedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
+
+            // LLM 后处理（异步），完成后再粘贴
+            let finalize = { (processedText: String) in
+                if !processedText.isEmpty {
+                    HistoryLogger.log(processedText)
+                }
+
+                self?.overlay.setState(.done)
+                self?.overlay.updateText(processedText.isEmpty ? "无输入" : processedText)
+
+                let targetApp = self?.previousApp
+                if !processedText.isEmpty {
+                    TextInjector.paste(processedText, targetApp: targetApp)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    self?.overlay.hide()
+                }
+            }
+
+            if LLMPostProcessor.enabled && LLMPostProcessor.isConfigured && !replacedText.isEmpty {
+                self?.overlay.updateText("正在优化文本...")
+                LLMPostProcessor.process(replacedText) { result in
+                    finalize(result)
+                }
+            } else {
+                finalize(replacedText)
+            }
+        }
+
+        asr?.onError = { [weak self] (msg: String) in
+            self?.cleanupAfterError()
+            self?.overlay.setState(.error(msg))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                self?.overlay.hide()
+            }
+        }
+    }
+
+    private func setupInlineModeCallbacks() {
+        asr?.onPartialResult = { [weak self] (text: String) in
+            self?.inlineInjector.update(to: text)
+        }
+
+        asr?.onFinalResult = { [weak self] (text: String) in
+            let replacedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
+
+            // LLM 后处理（异步），完成后再注入
+            let finalize = { (processedText: String) in
+                if !processedText.isEmpty {
+                    self?.inlineInjector.finalize(with: processedText)
+                    HistoryLogger.log(processedText)
+                } else {
+                    // 无识别文本 — 清理输入框中残留的部分文本
+                    self?.inlineInjector.deleteAll()
+                }
+
+                self?.overlay.setState(.done)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    self?.overlay.hide()
+                }
+            }
+
+            if LLMPostProcessor.enabled && LLMPostProcessor.isConfigured && !replacedText.isEmpty {
+                LLMPostProcessor.process(replacedText) { result in
+                    finalize(result)
+                }
+            } else {
+                finalize(replacedText)
+            }
+        }
+
+        asr?.onError = { [weak self] (msg: String) in
+            self?.cleanupAfterError()
+            self?.inlineInjector.deleteAll()
+            self?.overlay.setState(.error(msg))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                self?.overlay.hide()
+            }
+        }
+    }
+
+    private func stopRecording() {
+        // Stop recording first
+        _ = recorder.stop()
+        recorder.onAudioChunk = nil
+        recorder.onAudioLevel = nil
+
+        // Update menu bar icon
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "VoiceInput")
+        }
+
+        // Signal end of audio to ASR
+        overlay.setState(.transcribing)
+        if !isInlineMode {
+            overlay.updateText("正在识别...")
+        }
+        asr?.endStreaming()
+    }
+
+    /// Clean up recording and ASR state after an error to prevent
+    /// stale mic usage and data accumulation.
+    private func cleanupAfterError() {
+        if recorder.recording {
+            _ = recorder.stop()
+        }
+        recorder.onAudioChunk = nil
+        recorder.onAudioLevel = nil
+        asr?.cancel()
+        asr = nil
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "VoiceInput")
+        }
+        hotkeyManager?.resetState()
+    }
+
+    /// One-time migration: move credentials from UserDefaults to Keychain.
+    private func migrateCredentialsToKeychain() {
+        let defaults = UserDefaults.standard
+        if let oldAppId = defaults.string(forKey: "volcengine_app_id"), !oldAppId.isEmpty,
+           KeychainHelper.load(key: "volcengine_app_id") == nil {
+            KeychainHelper.save(key: "volcengine_app_id", value: oldAppId)
+            defaults.removeObject(forKey: "volcengine_app_id")
+            print("[AppDelegate] Migrated appId to Keychain")
+        }
+        if let oldToken = defaults.string(forKey: "volcengine_token"), !oldToken.isEmpty,
+           KeychainHelper.load(key: "volcengine_token") == nil {
+            KeychainHelper.save(key: "volcengine_token", value: oldToken)
+            defaults.removeObject(forKey: "volcengine_token")
+            print("[AppDelegate] Migrated token to Keychain")
+        }
+    }
+}
+</file>
+
+</files>

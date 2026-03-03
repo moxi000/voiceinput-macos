@@ -1,52 +1,14 @@
 import Cocoa
 
-/// Types text directly into the active input field using CGEvent keyboard simulation.
-/// Uses common-prefix diffing to minimize keystrokes when ASR updates partial results.
-class InlineTextInjector {
-    /// The full text that has been typed into the target field so far.
-    private var lastTypedText: String = ""
+protocol InlineTypingSink {
+    func sendBackspaces(count: Int)
+    func sendString(_ string: String)
+}
 
+private final class CGEventTypingSink: InlineTypingSink {
     private let eventSource = CGEventSource(stateID: .privateState)
 
-    /// Reset state. Call when starting a new recording session.
-    func reset() {
-        lastTypedText = ""
-    }
-
-    /// Update the typed text to match `newFullText`.
-    /// Diffs against lastTypedText: deletes from divergence point, then types new suffix.
-    func update(to newFullText: String) {
-        let diff = InlineTextInjector.computeDiff(old: lastTypedText, new: newFullText)
-
-        if diff.deleteCount == 0 && diff.insertSuffix.isEmpty { return }
-
-        if diff.deleteCount > 0 {
-            sendBackspaces(count: diff.deleteCount)
-        }
-        if !diff.insertSuffix.isEmpty {
-            sendString(diff.insertSuffix)
-        }
-
-        lastTypedText = newFullText
-    }
-
-    /// Apply final corrections (e.g., after WordReplacer), then reset state.
-    func finalize(with finalText: String) {
-        update(to: finalText)
-        lastTypedText = ""
-    }
-
-    /// Delete ALL text that was typed (for error recovery / cancellation).
-    func deleteAll() {
-        if !lastTypedText.isEmpty {
-            sendBackspaces(count: lastTypedText.count)
-        }
-        lastTypedText = ""
-    }
-
-    // MARK: - CGEvent Simulation
-
-    private func sendBackspaces(count: Int) {
+    func sendBackspaces(count: Int) {
         for i in 0..<count {
             let down = CGEvent(keyboardEventSource: eventSource, virtualKey: 0x33, keyDown: true)
             down?.post(tap: .cgSessionEventTap)
@@ -59,7 +21,7 @@ class InlineTextInjector {
         }
     }
 
-    private func sendString(_ string: String) {
+    func sendString(_ string: String) {
         let utf16 = Array(string.utf16)
         let chunkSize = 20  // macOS CGEvent limit per keyboardSetUnicodeString call
 
@@ -84,6 +46,78 @@ class InlineTextInjector {
                 Thread.sleep(forTimeInterval: 0.004)
             }
         }
+    }
+}
+
+/// Types text directly into the active input field using CGEvent keyboard simulation.
+/// Uses common-prefix diffing to minimize keystrokes when ASR updates partial results.
+class InlineTextInjector {
+    /// The full text that has been typed into the target field so far.
+    private var lastTypedText: String = ""
+    private var lastFinalizedText: String?
+
+    private let typingSink: any InlineTypingSink
+
+    static let previewBeforeInjectionKey = "inline_preview_before_injection_enabled"
+
+    init(typingSink: (any InlineTypingSink)? = nil) {
+        self.typingSink = typingSink ?? CGEventTypingSink()
+    }
+
+    /// Reset state. Call when starting a new recording session.
+    func reset() {
+        lastTypedText = ""
+        lastFinalizedText = nil
+    }
+
+    /// Update the typed text to match `newFullText`.
+    /// Diffs against lastTypedText: deletes from divergence point, then types new suffix.
+    func update(to newFullText: String) {
+        let diff = InlineTextInjector.computeDiff(old: lastTypedText, new: newFullText)
+
+        if diff.deleteCount == 0 && diff.insertSuffix.isEmpty { return }
+
+        if diff.deleteCount > 0 {
+            typingSink.sendBackspaces(count: diff.deleteCount)
+        }
+        if !diff.insertSuffix.isEmpty {
+            typingSink.sendString(diff.insertSuffix)
+        }
+
+        lastTypedText = newFullText
+    }
+
+    /// Apply final corrections (e.g., after WordReplacer), then reset state.
+    func finalize(with finalText: String) {
+        update(to: finalText)
+        lastFinalizedText = finalText
+        lastTypedText = ""
+    }
+
+    /// Undo the most recent finalized injection.
+    @discardableResult
+    func undoLastInjection() -> Bool {
+        guard let lastFinalizedText, !lastFinalizedText.isEmpty else { return false }
+        typingSink.sendBackspaces(count: lastFinalizedText.count)
+        self.lastFinalizedText = nil
+        return true
+    }
+
+    /// Delete ALL text that was typed (for error recovery / cancellation).
+    func deleteAll() {
+        if !lastTypedText.isEmpty {
+            typingSink.sendBackspaces(count: lastTypedText.count)
+        }
+        lastTypedText = ""
+        lastFinalizedText = nil
+    }
+
+    static func isPreviewBeforeInjectionEnabled(userDefaults: UserDefaults = .standard) -> Bool {
+        userDefaults.bool(forKey: previewBeforeInjectionKey)
+    }
+
+    static func setPreviewBeforeInjectionEnabled(_ enabled: Bool, userDefaults: UserDefaults = .standard) {
+        userDefaults.set(enabled, forKey: previewBeforeInjectionKey)
     }
 
     // MARK: - Diffing (internal for testability)

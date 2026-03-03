@@ -2,7 +2,7 @@ import Foundation
 import Network
 
 /// Local ASR service using a raw TCP connection to a local server.
-/// Protocol: HTTP chunked POST with length-prefixed audio frames, SSE response stream with JSON events.
+/// Protocol: HTTP POST with custom length-prefixed audio frames, SSE response stream with JSON events.
 class LocalASR: ASRService {
     private let host: String
     private let port: UInt16
@@ -13,6 +13,7 @@ class LocalASR: ASRService {
     private var _pendingChunks: [Data] = []
     private var responseBuffer = Data()
     private var _didEmitFinal = false
+    private var _lastNonEmptyText = ""
 
     var onPartialResult: ((String) -> Void)?
     var onFinalResult: ((String) -> Void)?
@@ -30,6 +31,7 @@ class LocalASR: ASRService {
             _isConnected = false
             _pendingChunks = []
             _didEmitFinal = false
+            _lastNonEmptyText = ""
         }
         responseBuffer = Data()
 
@@ -96,6 +98,7 @@ class LocalASR: ASRService {
         stateQueue.sync {
             _isConnected = false
             _pendingChunks = []
+            _lastNonEmptyText = ""
         }
         connection?.cancel()
         connection = nil
@@ -107,7 +110,6 @@ class LocalASR: ASRService {
         let request = "POST /asr/realtime HTTP/1.1\r\n"
             + "Host: \(host):\(port)\r\n"
             + "Content-Type: application/octet-stream\r\n"
-            + "Transfer-Encoding: chunked\r\n"
             + "Connection: keep-alive\r\n"
             + "\r\n"
 
@@ -143,27 +145,37 @@ class LocalASR: ASRService {
                 buffer.append(content)
             }
 
-            let separator = Data([0x0D, 0x0A, 0x0D, 0x0A])  // \r\n\r\n
-            if let headerEndRange = buffer.range(of: separator) {
+            if let headerEnd = findHeaderEnd(in: buffer) {
                 // Headers complete
-                let bodyStart = headerEndRange.upperBound
+                let headerData = buffer[buffer.startIndex..<headerEnd.lowerBound]
+                let validation = self.validateHandshakeHeaders(headerData)
+                if let errorMessage = validation.errorMessage {
+                    self.emitError(errorMessage)
+                    self.connection?.cancel()
+                    return
+                }
+                print("[LocalASR] Response: \(validation.statusLine)")
+
+                let bodyStart = headerEnd.upperBound
                 if bodyStart < buffer.count {
                     let initialBody = buffer[bodyStart...]
                     self.responseBuffer.append(contentsOf: initialBody)
                     self.processSSEBuffer()
                 }
 
-                // Log status line
-                let headerData = buffer[buffer.startIndex..<headerEndRange.lowerBound]
-                if let headerStr = String(data: headerData, encoding: .utf8) {
-                    let firstLine = headerStr.components(separatedBy: "\r\n").first ?? ""
-                    print("[LocalASR] Response: \(firstLine)")
-                }
-
                 // Start continuous SSE reading
                 self.readSSEData()
             } else if isComplete {
-                self.emitError("连接关闭，未收到完整响应头")
+                if !buffer.isEmpty {
+                    let validation = self.validateHandshakeHeaders(buffer)
+                    if let errorMessage = validation.errorMessage {
+                        self.emitError(errorMessage)
+                    } else {
+                        self.emitError("连接结束但未收到 done 事件且无可用文本")
+                    }
+                } else {
+                    self.emitError("连接关闭，未收到完整响应头")
+                }
             } else {
                 self.readUntilHeaderEnd(accumulated: buffer)
             }
@@ -191,11 +203,27 @@ class LocalASR: ASRService {
             }
 
             if isComplete {
-                self.stateQueue.sync {
-                    if !self._didEmitFinal {
-                        self._didEmitFinal = true
-                        print("[LocalASR] Connection completed without explicit done signal")
+                let completionAction: SSECompletionAction = self.stateQueue.sync {
+                    if self._didEmitFinal {
+                        return .none
                     }
+                    self._didEmitFinal = true
+                    let fallbackText = self._lastNonEmptyText
+                    if !fallbackText.isEmpty {
+                        return .emitFinal(fallbackText)
+                    }
+                    return .emitError("连接结束但未收到 done 事件且无可用文本")
+                }
+
+                switch completionAction {
+                case .none:
+                    break
+                case .emitFinal(let text):
+                    let logText = HistoryLogger.enabled ? text : "<redacted>"
+                    print("[LocalASR] Final (fallback on complete): \(logText)")
+                    DispatchQueue.main.async { self.onFinalResult?(text) }
+                case .emitError(let message):
+                    self.emitError(message)
                 }
                 return
             }
@@ -249,17 +277,26 @@ class LocalASR: ASRService {
         }
 
         if isDone {
-            let alreadyEmitted = stateQueue.sync {
-                if _didEmitFinal { return true }
+            let result = stateQueue.sync { () -> (alreadyEmitted: Bool, finalText: String) in
+                if !text.isEmpty {
+                    _lastNonEmptyText = text
+                }
+                if _didEmitFinal {
+                    return (true, "")
+                }
                 _didEmitFinal = true
-                return false
+                let finalText = text.isEmpty ? _lastNonEmptyText : text
+                return (false, finalText)
             }
+            let alreadyEmitted = result.alreadyEmitted
             guard !alreadyEmitted else { return }
-            let logText = HistoryLogger.enabled ? text : "<redacted>"
+            let finalText = result.finalText
+            let logText = HistoryLogger.enabled ? finalText : "<redacted>"
             print("[LocalASR] Final: \(logText)")
-            DispatchQueue.main.async { self.onFinalResult?(text) }
+            DispatchQueue.main.async { self.onFinalResult?(finalText) }
             connection?.cancel()
         } else if !text.isEmpty {
+            stateQueue.sync { _lastNonEmptyText = text }
             let logText2 = HistoryLogger.enabled ? text : "<redacted>"
             print("[LocalASR] Partial: \(logText2)")
             DispatchQueue.main.async { self.onPartialResult?(text) }
@@ -313,5 +350,53 @@ class LocalASR: ASRService {
     private func emitError(_ msg: String) {
         print("[LocalASR] Error: \(msg)")
         DispatchQueue.main.async { self.onError?(msg) }
+    }
+
+    private func validateHandshakeHeaders(_ headerData: Data) -> (statusLine: String, errorMessage: String?) {
+        guard let headerText = String(data: headerData, encoding: .utf8) else {
+            return ("<invalid>", "握手失败: 响应头无法解码")
+        }
+
+        let lines = headerText.components(separatedBy: "\r\n")
+        let statusLine = lines.first ?? "<missing>"
+        let statusParts = statusLine.split(separator: " ")
+        guard statusParts.count >= 2, let statusCode = Int(statusParts[1]) else {
+            return (statusLine, "握手失败: 无效状态行 \(statusLine)")
+        }
+        guard (200...299).contains(statusCode) else {
+            return (statusLine, "握手失败: HTTP 状态码 \(statusCode)")
+        }
+
+        var contentType: String?
+        for line in lines.dropFirst() {
+            guard let colon = line.firstIndex(of: ":") else { continue }
+            let key = line[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
+            if key == "content-type" {
+                let value = line[line.index(after: colon)...]
+                contentType = value.trimmingCharacters(in: .whitespaces)
+                break
+            }
+        }
+
+        guard let ct = contentType, ct.lowercased().contains("text/event-stream") else {
+            let actual = contentType ?? "<missing>"
+            return (statusLine, "握手失败: Content-Type 非 text/event-stream (\(actual))")
+        }
+        return (statusLine, nil)
+    }
+
+    private func findHeaderEnd(in data: Data) -> Range<Data.Index>? {
+        let crlfSep = Data([0x0D, 0x0A, 0x0D, 0x0A])  // \r\n\r\n
+        if let range = data.range(of: crlfSep) {
+            return range
+        }
+        let lfSep = Data([0x0A, 0x0A])  // \n\n
+        return data.range(of: lfSep)
+    }
+
+    private enum SSECompletionAction {
+        case none
+        case emitFinal(String)
+        case emitError(String)
     }
 }

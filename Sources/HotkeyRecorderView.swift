@@ -1,5 +1,29 @@
 import Cocoa
 
+enum HotkeySaveValidationError: Equatable {
+    case notRecorded
+    case conflict
+}
+
+enum HotkeySaveValidationResult: Equatable {
+    case valid(HotkeyConfig?)
+    case invalid(HotkeySaveValidationError)
+}
+
+enum HotkeySaveValidator {
+    static func hasConflict(_ lhs: HotkeyConfig?, _ rhs: HotkeyConfig?) -> Bool {
+        guard let lhs, let rhs else { return false }
+        return lhs == rhs
+    }
+
+    static func validate(disabled: Bool, pending: HotkeyConfig?, other: HotkeyConfig?) -> HotkeySaveValidationResult {
+        if disabled { return .valid(nil) }
+        guard let pending else { return .invalid(.notRecorded) }
+        guard !hasConflict(pending, other) else { return .invalid(.conflict) }
+        return .valid(pending)
+    }
+}
+
 /// A dedicated panel for recording a hotkey combination.
 /// Uses global event monitors to capture keys even if focus is lost.
 /// Accumulates held modifiers and waits for a non-modifier key to complete the combo,

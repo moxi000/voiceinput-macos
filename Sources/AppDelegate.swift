@@ -17,6 +17,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var holdHotkeyMenuItem: NSMenuItem!
     private var freeHotkeyMenuItem: NSMenuItem!
     private var llmMenuItem: NSMenuItem!
+    private let sessionController = SessionController()
+    private let finalWatchdogTimeoutDefaultsKey = "final_watchdog_timeout_seconds"
 
     private var isInlineMode: Bool {
         get { UserDefaults.standard.bool(forKey: "inline_mode") }
@@ -62,6 +64,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set(newValue, forKey: "privacy_mode")
             applyPrivacyMode()
         }
+    }
+
+    private var finalWatchdogTimeout: TimeInterval {
+        let configured = UserDefaults.standard.double(forKey: finalWatchdogTimeoutDefaultsKey)
+        return configured > 0 ? configured : 10.0
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -541,6 +548,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         asr?.cancel()
         asr = nil
 
+        let sessionID = sessionController.beginSession()
+
         // Capture the frontmost app BEFORE anything else
         previousApp = NSWorkspace.shared.frontmostApplication
         print("[AppDelegate] Captured target app: \(previousApp?.localizedName ?? "unknown")")
@@ -551,6 +560,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             guard !appId.isEmpty, !token.isEmpty else {
                 print("[AppDelegate] Credentials not set!")
+                _ = sessionController.completeSessionIfCurrent(sessionID)
                 hotkeyManager.resetState()
                 showApiKeyDialog()
                 return
@@ -561,9 +571,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if isInlineMode {
-            setupInlineModeCallbacks()
+            setupInlineModeCallbacks(sessionID: sessionID)
         } else {
-            setupOverlayModeCallbacks()
+            setupOverlayModeCallbacks(sessionID: sessionID)
         }
 
         // Start ASR connection
@@ -571,14 +581,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Stream audio chunks to ASR in real-time
         recorder.onAudioChunk = { [weak self] chunk in
-            self?.asr?.sendAudioChunk(chunk)
+            guard let self = self, self.sessionController.isCurrent(sessionID) else { return }
+            self.asr?.sendAudioChunk(chunk)
         }
 
         // Feed audio levels to overlay waveform (inline mode only)
         if isInlineMode {
             recorder.onAudioLevel = { [weak self] level in
+                guard let self = self, self.sessionController.isCurrent(sessionID) else { return }
                 DispatchQueue.main.async {
-                    self?.overlay.updateAudioLevel(level)
+                    guard self.sessionController.isCurrent(sessionID) else { return }
+                    self.overlay.updateAudioLevel(level)
                 }
             }
         } else {
@@ -589,7 +602,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             try recorder.start()
         } catch {
             print("[AppDelegate] Failed to start recording: \(error)")
+            _ = sessionController.completeSessionIfCurrent(sessionID)
             asr?.cancel()
+            asr = nil
             hotkeyManager.resetState()
             return
         }
@@ -610,35 +625,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func setupOverlayModeCallbacks() {
+    private func setupOverlayModeCallbacks(sessionID: SessionController.SessionID) {
         asr?.onPartialResult = { [weak self] (text: String) in
-            self?.overlay.updateText(text)
+            guard let self = self, self.sessionController.isCurrent(sessionID) else { return }
+            self.overlay.updateText(text)
         }
 
         asr?.onFinalResult = { [weak self] (text: String) in
+            guard let self = self, self.sessionController.isCurrent(sessionID) else { return }
             let replacedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
 
             // LLM 后处理（异步），完成后再粘贴
-            let finalize = { (processedText: String) in
+            let finalize = { [weak self] (processedText: String) in
+                guard let self = self else { return }
+                guard self.sessionController.completeSessionIfCurrent(sessionID) else { return }
                 if !processedText.isEmpty {
                     HistoryLogger.log(processedText)
                 }
 
-                self?.overlay.setState(.done)
-                self?.overlay.updateText(processedText.isEmpty ? "无输入" : processedText)
+                self.overlay.setState(.done)
+                self.overlay.updateText(processedText.isEmpty ? "无输入" : processedText)
 
-                let targetApp = self?.previousApp
+                let targetApp = self.previousApp
                 if !processedText.isEmpty {
                     TextInjector.paste(processedText, targetApp: targetApp)
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    self?.overlay.hide()
+                    self.overlay.hide()
                 }
             }
 
             if LLMPostProcessor.enabled && LLMPostProcessor.isConfigured && !replacedText.isEmpty {
-                self?.overlay.updateText("正在优化文本...")
+                self.overlay.updateText("正在优化文本...")
                 LLMPostProcessor.process(replacedText) { result in
+                    guard self.sessionController.isCurrent(sessionID) else { return }
                     finalize(result)
                 }
             } else {
@@ -647,40 +667,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         asr?.onError = { [weak self] (msg: String) in
-            self?.cleanupAfterError()
-            self?.overlay.setState(.error(msg))
+            guard let self = self else { return }
+            guard self.sessionController.completeSessionIfCurrent(sessionID) else { return }
+            self.cleanupAfterError()
+            self.overlay.setState(.error(msg))
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                self?.overlay.hide()
+                self.overlay.hide()
             }
         }
     }
 
-    private func setupInlineModeCallbacks() {
+    private func setupInlineModeCallbacks(sessionID: SessionController.SessionID) {
         asr?.onPartialResult = { [weak self] (text: String) in
-            self?.inlineInjector.update(to: text)
+            guard let self = self, self.sessionController.isCurrent(sessionID) else { return }
+            self.inlineInjector.update(to: text)
         }
 
         asr?.onFinalResult = { [weak self] (text: String) in
+            guard let self = self, self.sessionController.isCurrent(sessionID) else { return }
             let replacedText = text.isEmpty ? text : WordReplacer.applyReplacements(to: text)
 
             // LLM 后处理（异步），完成后再注入
-            let finalize = { (processedText: String) in
+            let finalize = { [weak self] (processedText: String) in
+                guard let self = self else { return }
+                guard self.sessionController.completeSessionIfCurrent(sessionID) else { return }
                 if !processedText.isEmpty {
-                    self?.inlineInjector.finalize(with: processedText)
+                    self.inlineInjector.finalize(with: processedText)
                     HistoryLogger.log(processedText)
                 } else {
                     // 无识别文本 — 清理输入框中残留的部分文本
-                    self?.inlineInjector.deleteAll()
+                    self.inlineInjector.deleteAll()
                 }
 
-                self?.overlay.setState(.done)
+                self.overlay.setState(.done)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    self?.overlay.hide()
+                    self.overlay.hide()
                 }
             }
 
             if LLMPostProcessor.enabled && LLMPostProcessor.isConfigured && !replacedText.isEmpty {
                 LLMPostProcessor.process(replacedText) { result in
+                    guard self.sessionController.isCurrent(sessionID) else { return }
                     finalize(result)
                 }
             } else {
@@ -689,16 +716,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         asr?.onError = { [weak self] (msg: String) in
-            self?.cleanupAfterError()
-            self?.inlineInjector.deleteAll()
-            self?.overlay.setState(.error(msg))
+            guard let self = self else { return }
+            guard self.sessionController.completeSessionIfCurrent(sessionID) else { return }
+            self.cleanupAfterError()
+            self.inlineInjector.deleteAll()
+            self.overlay.setState(.error(msg))
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                self?.overlay.hide()
+                self.overlay.hide()
             }
         }
     }
 
     private func stopRecording() {
+        guard let sessionID = sessionController.currentSession() else { return }
+
         // Stop recording first
         _ = recorder.stop()
         recorder.onAudioChunk = nil
@@ -715,6 +746,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             overlay.updateText("正在识别...")
         }
         asr?.endStreaming()
+
+        sessionController.finalWatchdogTimeout = finalWatchdogTimeout
+        sessionController.armFinalWatchdog(for: sessionID) { [weak self] in
+            DispatchQueue.main.async {
+                self?.handleFinalWatchdogTimeout()
+            }
+        }
+    }
+
+    private func handleFinalWatchdogTimeout() {
+        cleanupAfterError()
+        if isInlineMode {
+            inlineInjector.deleteAll()
+        }
+        overlay.setState(.error("识别超时，请重试"))
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.overlay.hide()
+        }
     }
 
     /// Clean up recording and ASR state after an error to prevent
